@@ -1,0 +1,53 @@
+services:
+
+  db:
+    image: postgres:14.1-alpine
+    container_name: server-db
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    container_name: server-redis
+    restart: always
+    ports:
+      - 6379:6379
+
+  backend:
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile
+    container_name: server-backend
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - PRODUCTION=${PRODUCTION}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ..:/app
+    #ports:
+    #  - 80:8000
+
+  webserver:
+    container_name: server-webserver
+    restart: always
+    image: nginx:stable-alpine
+    depends_on:
+      - backend
+    ports:
+      - 80:80
+    volumes:
+      - ./conf/nginx:/etc/nginx/conf.d
+
+volumes:
+  db_data:

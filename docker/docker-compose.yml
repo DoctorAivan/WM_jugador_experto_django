@@ -12,14 +12,16 @@ services:
       - PRODUCTION=${PRODUCTION}
     volumes:
       - ..:/app
-
-  webserver:
-    container_name: server-webserver
-    restart: always
-    image: nginx:stable-alpine
-    depends_on:
-      - backend
     ports:
-      - 80:80
-    volumes:
-      - ./conf/nginx:/etc/nginx/conf.d
+      - 80:8000
+
+  # webserver:
+  #   container_name: server-webserver
+  #   restart: always
+  #   image: nginx:stable-alpine
+  #   depends_on:
+  #     - backend
+  #   ports:
+  #     - 80:80
+  #   volumes:
+  #     - ./conf/nginx:/etc/nginx/conf.d

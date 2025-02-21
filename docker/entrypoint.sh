@@ -2,9 +2,6 @@
 
 # If env PRODUCTION is 1, then run the production server, otherwise if its 0 run the development server
 if [ "$PRODUCTION" = "1" ]; then
-  # Run migrate before running the production server
-  # python manage.py migrate
-
   # Run the production server
   # -k daphne
   gunicorn -w 8 \

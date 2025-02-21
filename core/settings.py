@@ -209,10 +209,10 @@ if PRODUCTION == "1":
             'rest_framework.authentication.SessionAuthentication',
             'rest_framework.authentication.TokenAuthentication',
         ),
-        'DEFAULT_THROTTLE_RATES': {
-            'user': '1000/hour',
-            'anon': '100/hour',
-        },
+#       'DEFAULT_THROTTLE_RATES': {
+#           'user': '1000/hour',
+#           'anon': '100/hour',
+#       },
     }
 else:
     REST_FRAMEWORK = {

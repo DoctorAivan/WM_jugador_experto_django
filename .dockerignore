@@ -1,0 +1,10 @@
+__pycache__/
+logs/
+docker/.env
+docker/docker-compose.yml
+docker/Dockerfile
+.env
+.gitignore
+deploy.sh
+Pipfile
+Pipfile.lock

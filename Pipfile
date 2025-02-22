@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+apscheduler = "*"
+django = "*"
+django-apscheduler = "*"
+django-cors-headers = "*"
+django-redis = "*"
+djangorestframework = "*"
+psycopg2-binary = "*"
+python-dotenv = "*"
+redis = "*"
+requests = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"

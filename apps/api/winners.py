@@ -23,7 +23,7 @@ def winner_month_choise(month, year):
         .exclude(user_id__in=winner_users)
         .values('user__id')
         .annotate(total_votes=Count('id'))
-        .order_by('-total_votes')[:10]
+        .order_by('-total_votes')[:100]
     )
 
     # Validate possible winners lenght

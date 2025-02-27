@@ -29,9 +29,15 @@ class SignInSerializer(serializers.Serializer):
 class SignResponseSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
-    type = serializers.CharField()
     token = serializers.CharField()
     team = serializers.IntegerField()
+
+# Sign Response Serializer
+class SignBackendResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    type = serializers.CharField()
+    name = serializers.CharField()
+    token = serializers.CharField()
 
 # Vote Serializer
 class VoteSerializer(serializers.Serializer):

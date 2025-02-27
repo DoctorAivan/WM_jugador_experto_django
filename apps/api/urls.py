@@ -40,7 +40,8 @@ from apps.api.views import (CreateOwner,
                             TeamsViewSet,
                             
                             JsonMatchs,
-                            JsonMatchsDetails)
+                            JsonMatchsDetails,
+                            JsonMatchsResults)
 
 router = SimpleRouter(trailing_slash=False)
 #router.register('users', UserstViewSet, basename='users')
@@ -69,8 +70,6 @@ urlpatterns = [
     # Teams players
     path('teams-players/<int:pk>', TeamPlayersView.as_view(), name='team-players'),
     path('teams-players-clear/<int:pk>', TeamPlayerClearView.as_view(), name='team-players-clear'),
-
-    # Players
     path('teams-players-details/<int:pk>', TeamPlayersDetailsView.as_view(), name='team-players-details'),
 
     # Matchs archived
@@ -119,6 +118,7 @@ urlpatterns = [
 
     # Match
     path('match-list', JsonMatchs.as_view(), name='json-matchs'),
-    path('match-details/<int:pk>', JsonMatchsDetails.as_view(), name='json-matchs-details'),
+    path('match-election/<int:pk>', JsonMatchsDetails.as_view(), name='api-match-election'),
+    path('match-results/<int:pk>', JsonMatchsResults.as_view(), name='api-match-results'),
 
 ]

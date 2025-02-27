@@ -28,6 +28,7 @@ from apps.api.serializers import (SignUpSerializer,
                                   VoteSerializer,
                                   UsersSerializer,
                                   SignResponseSerializer,
+                                  SignBackendResponseSerializer,
                                   LeaguesSerializer,
                                   TeamsSerializer,
                                   PlayersSerializer,
@@ -38,6 +39,7 @@ from apps.api.serializers import (SignUpSerializer,
 
 from apps.api.results import (results_match_list,
                               results_match,
+                              results_match_votes,
                               results_match_archive,
                               result_all_match_list,
                               user_vote_history,
@@ -45,14 +47,6 @@ from apps.api.results import (results_match_list,
                               result_users_list)
 
 from apps.api.winners import (winner_month_choise)
-
-def reset_sequence(table_name):
-    with connection.cursor() as cursor:
-        cursor.execute(f"SELECT MAX(id) FROM {table_name}")
-        max_id = cursor.fetchone()[0] or 1
-        cursor.execute(f"ALTER SEQUENCE {table_name}_id_seq RESTART WITH {max_id + 1}")
-
-        print('SEQUENCER')
 
 #       #       #       #       #       #       #       #       #       #       #       #
 # Sequencers
@@ -69,6 +63,13 @@ class UpdateSequencerView(views.APIView):
         reset_sequence('api_player')
 
         return Response('Sequencer Updated', status=status.HTTP_200_OK)
+
+# Reset sequencer ID
+def reset_sequence(table_name):
+    with connection.cursor() as cursor:
+        cursor.execute(f"SELECT MAX(id) FROM {table_name}")
+        max_id = cursor.fetchone()[0] or 1
+        cursor.execute(f"ALTER SEQUENCE {table_name}_id_seq RESTART WITH {max_id + 1}")
 
 #       #       #       #       #       #       #       #       #       #       #       #
 # API View
@@ -123,9 +124,7 @@ class SignUpView(views.APIView):
         if User.objects.filter(username=email).exists():
 
             # Create json response
-            response = {
-                'error': 'El correo ingresado ya esta registrado'
-            }
+            response = { 'error' : 'El correo ingresado ya esta registrado' }
 
             # Send response
             return Response(response, status=status.HTTP_403_FORBIDDEN)
@@ -155,7 +154,6 @@ class SignUpView(views.APIView):
             response = {
                 'id': user.id,
                 'name': user.first_name,
-                'type': account.type,
                 'team': account.team,
                 'token': token
             }
@@ -194,7 +192,6 @@ class SignInView(views.APIView):
             response = {
                 'id': user.id,
                 'name': user.first_name,
-                'type': account.type,
                 'team': account.team,
                 'token': token
             }
@@ -205,9 +202,7 @@ class SignInView(views.APIView):
         else:
 
             # Create json response
-            response = {
-                'error': 'User not found'
-            }
+            response = { 'error' : 'User not found' }
 
             # Send response
             return Response(response, status=status.HTTP_403_FORBIDDEN)
@@ -241,8 +236,11 @@ class SignInBackendView(views.APIView):
             # Validate account type
             if account.type != 'D':
 
-                # Get token
-                token = Token.objects.get(user=user)
+                # Delete token
+                Token.objects.filter(user=user).delete()
+
+                # Create new token
+                token = Token.objects.create(user=user)
 
                 # Create json response
                 response = {
@@ -253,7 +251,7 @@ class SignInBackendView(views.APIView):
                 }
 
                 # Send response
-                return Response(response, status=status.HTTP_200_OK)
+                return Response(SignBackendResponseSerializer(response).data, status=status.HTTP_200_OK)
 
             else:
 
@@ -272,34 +270,38 @@ class VoteView(views.APIView):
     permission_classes = [Authenticated]
 
     def post(self, request):
+        try:
 
-        # Serializer validation
-        serializer = VoteSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+            # Serializer validation
+            serializer = VoteSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
 
-        # Create instances
-        user = request.user
-        match = data['match']
-        player = data['player']
+            # Create instances
+            user = request.user
+            match = data['match']
+            player = data['player']
 
-        # Validate emited vote
-        if Vote.objects.filter(user=user, match=match).exists():
-            return Response('already_voted', status=status.HTTP_200_OK)
+            # Validate emited vote
+            if Vote.objects.filter(user=user, match=match).exists():
+                return Response('ready', status=status.HTTP_200_OK)
 
-        # Create instances
-        match = Match.objects.get(pk=match)
-        player = Match_player.objects.get(pk=player)
+            # Create instances
+            match = Match.objects.get(pk=match)
+            player = Match_player.objects.get(pk=player)
 
-        # Create vote
-        Vote.objects.create(
-            user = user,
-            match = match,
-            match_player = player
-        )
+            # Create vote
+            Vote.objects.create(
+                user = user,
+                match = match,
+                match_player = player
+            )
 
-        # Send response
-        return Response('voted', status=status.HTTP_200_OK)
+            # Send response
+            return Response('voted', status=status.HTTP_200_OK)
+        
+        except:
+            return Response('error', status=status.HTTP_400_BAD_REQUEST)
 
 #       #       #       #       #       #       #       #       #       #       #       #
 
@@ -314,6 +316,11 @@ class UserHistory(views.APIView):
             # Create instances
             user = request.user
 
+            # Get user history vote
+            response = user_vote_history(user.id, page)
+            return Response( response , status = status.HTTP_200_OK)
+
+            """
             # Get cache data
             response = cache.get(f"history_{user.id}")
 
@@ -324,6 +331,7 @@ class UserHistory(views.APIView):
             # Set cache data
             response = user_vote_history(user.id, page)
             return Response( response , status = status.HTTP_200_OK)
+            """
 
         except:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
@@ -361,12 +369,30 @@ class JsonMatchsDetails(APIView):
 
             # Validate cache data
             if response is not None:
-                print(f'Match {pk} Cache READ')
                 return Response( response , status = status.HTTP_200_OK)
 
             # Set cache data
             response = results_match(pk)
-            print(f'Match {pk} Cache CREATE')
+            return Response( response , status = status.HTTP_200_OK)
+
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+# Get Match Results
+class JsonMatchsResults(APIView):
+
+    def get(self, request, pk):
+        try:
+
+            # Get cache data
+            response = cache.get(f"match_results_{pk}")
+
+            # Validate cache data
+            if response is not None:
+                return Response( response , status = status.HTTP_200_OK)
+
+            # Set cache data
+            response = results_match_votes(pk)
             return Response( response , status = status.HTTP_200_OK)
 
         except:
@@ -864,6 +890,8 @@ class MatchActionsView(views.APIView):
             match.time = time
             match.save()
 
+            results_match(pk)
+
             return Response( MatchsSerializer(match).data , status=status.HTTP_200_OK)
         
         except:
@@ -1060,7 +1088,7 @@ class MatchResultsView(views.APIView):
     def get(self, request, pk):
 
         # Create match json file
-        response = results_match(pk)
+        response = results_match_votes(pk)
         return Response( response , status = status.HTTP_200_OK)
 
 # Match Save Scheme
@@ -1350,7 +1378,7 @@ class WinnerChoiseView(views.APIView):
 
 # Winner Empty
 class WinnerEmptyView(views.APIView):
-    permission_classes = [Admin]
+    #permission_classes = [Admin]
 
     def get(self, request):
 

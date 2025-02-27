@@ -16,7 +16,7 @@ from apps.api.serializers import (MatchsPlayersSerializer,
 #       #       #       #       #       #       #       #       #       #       #       #
 # Match results
 
-# Create match json file
+# Create match election
 def results_match(id):
 
     # Get match data
@@ -45,9 +45,6 @@ def results_match(id):
         match.scheme = False
     match.save()
 
-    # Get match votes results
-    results = match_top_three_players(id)
-
     # Create json structure
     match = {
         'league' : LeaguesSerializer(match.league).data,
@@ -68,6 +65,44 @@ def results_match(id):
                 'name' : match.team_visit.name,
                 'code' : match.team_visit.code,
                 'players' : players_visit
+            }
+        }
+    }
+
+    # ID for cache
+    cache_key = f"match_{id}"
+
+    # Refresh cache indefinitely
+    cache.set(cache_key, match, timeout=None)
+    return match
+
+# Create match results
+def results_match_votes(id):
+
+    # Get match data
+    match = Match.objects.get(pk=id)
+
+    # Get match votes results
+    results = match_top_three_players(id)
+
+    # Create json structure
+    match = {
+        'league' : LeaguesSerializer(match.league).data,
+        'match' : {
+            'id' : match.id,
+            'status' : match.status,
+            'date' : Format.new_date(match.date),
+            'time' : Format.new_time(match.time),
+            'date_digits' : match.date,
+            'local' : {
+                'id' : match.team_local.id,
+                'name' : match.team_local.name,
+                'code' : match.team_local.code
+            },
+            'visit' : {
+                'id' : match.team_visit.id,
+                'name' : match.team_visit.name,
+                'code' : match.team_visit.code
             },
             'results' : {
                 'list' : results['list'],
@@ -77,11 +112,13 @@ def results_match(id):
     }
 
     # ID for cache
-    cache_key = f"match_{id}"
+    cache_key = f"match_results_{id}"
 
     # Refresh cache indefinitely
-    cache.set(cache_key, match, timeout=15)
+    cache.set(cache_key, match, timeout=10)
     return match
+
+#       #       #       #       #       #       #       #       #       #       #       #
 
 # Delete match from cache
 def results_match_archive(id):
@@ -153,7 +190,7 @@ def match_top_three_players(id):
         .annotate(
             votes=Count('id')
         )
-        .order_by('-votes')
+        .order_by('-votes')[:5]
     )
 
     # Create response and percentages
@@ -167,7 +204,7 @@ def match_top_three_players(id):
             'votes': player['votes'],
             'percentage': Format.persentage(player['votes'], total_votes)
         }
-        for player in match_votes[:3]
+        for player in match_votes
     ]
 
     response = {
@@ -251,6 +288,9 @@ def user_vote_history(user_id, page=1):
     # Count the total votes cast by the user
     matchs_voted = Vote.objects.filter(user_id=user_id).count()
 
+    # Amount of points per game
+    matchs_points = 10
+
     # Query to obtain the user's voting history
     votes = (
         Vote.objects.filter(user_id=user_id)
@@ -314,17 +354,17 @@ def user_vote_history(user_id, page=1):
 
     history = {
         'votes': matchs_voted,
-        'points': Format.number(matchs_voted * 75),
+        'points': Format.number(matchs_voted * matchs_points),
         'page': page,
         'pages': paginator.num_pages,
         'matches': matches
     }
 
     # ID for cache
-    cache_key = f"history_{user_id}"
+    #cache_key = f"history_{user_id}"
 
     # Refresh cache indefinitely
-    cache.set(cache_key, history, timeout=15)
+    #cache.set(cache_key, history, timeout=15)
 
     return history
 

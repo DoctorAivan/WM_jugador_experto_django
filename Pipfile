@@ -14,8 +14,11 @@ psycopg2-binary = "*"
 python-dotenv = "*"
 redis = "*"
 requests = "*"
+setuptools = "*"
+aws-psycopg2 = "*"
 
 [dev-packages]
+zappa = "*"
 
 [requires]
 python_version = "3.12"

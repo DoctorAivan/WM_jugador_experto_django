@@ -1,0 +1,28 @@
+{
+    "production": {
+        "django_settings": "core.settings",
+        "exclude": [
+            "boto3",
+            "dateutil",
+            "botocore",
+            "s3transfer",
+            "concurrent"
+        ],
+        "aws_region": "us-east-1",
+        "vpc_config" : {
+            "SubnetIds": [
+                "subnet-08500c7bf06d40d0c",
+                "subnet-05273ccf5c357506a",
+                "subnet-0832151d0a7062636"
+            ],
+            "SecurityGroupIds": ["sg-0b400804772781ba6"]
+        },
+        "slim_handler": true,
+        "timeout_seconds": 60,
+        "profile_name": "Warner",
+        "project_name": "cl-je-api",
+        "runtime": "python3.12",
+        "s3_bucket": "cl-zappa-temp",
+        "remote_env": "s3://cl-je/production-environment.json"
+    }
+}

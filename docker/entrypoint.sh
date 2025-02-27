@@ -9,7 +9,7 @@ if [ "$PRODUCTION" = "1" ]; then
       --worker-connections 1000 \
       --access-logfile logs/access_log \
       --error-logfile logs/error_log \
-      --bind :8000 \
+      --bind :80 \
       core.wsgi:application
       
 elif [ "$PRODUCTION" = "0" ]; then

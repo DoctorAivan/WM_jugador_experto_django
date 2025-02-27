@@ -6,3 +6,4 @@ json/*
 static/*
 **/.DS_Store
 logs/*_log
+*environment.json

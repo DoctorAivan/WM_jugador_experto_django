@@ -7,7 +7,7 @@ if [ "$STAGE" = "PRODUCTION" ]; then
   gunicorn -w 8 \
       -k gevent \
       --worker-connections 1000 \
-      --bind :80 \
+      --bind :8000 \
       core.wsgi:application
       
 elif [ "$STAGE" = "DEV" ]; then

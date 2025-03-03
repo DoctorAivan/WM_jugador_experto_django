@@ -2,6 +2,8 @@ from django.db import connection
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
+from django.http import HttpResponse
+
 from core.permissions import Admin, Staff, Branded, Authenticated, Visitors
 
 from rest_framework import viewsets
@@ -47,6 +49,10 @@ from apps.api.results import (results_match_list,
                               result_users_list)
 
 from apps.api.winners import (winner_month_choise)
+
+# Index 200
+def index(request):
+    return HttpResponse('.')
 
 #       #       #       #       #       #       #       #       #       #       #       #
 # Sequencers

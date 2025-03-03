@@ -69,19 +69,13 @@ CORS_ALLOW_HEADERS = [
 # CORS definitions
 if STAGE == "PRODUCTION":
     CORS_ALLOW_ALL_ORIGINS = False
-
-    CORS_ORIGIN_WHITELIST = (
-        'http://localhost:5173',  # FIXME: Remove this line
-    )
-
-    CORS_ALLOWED_ORIGINS = [
-        'http://localhost:5173',  # FIXME: Remove this line
-    ]
-    for host in os.getenv('ALLOWED_HOSTS').split(","):
-        CORS_ORIGIN_WHITELIST += ('https://{}'.format(host),)
-        CORS_ALLOWED_ORIGINS += ('https://{}'.format(host),)
-
-    ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS').split(",")
+    CORS_ORIGIN_WHITELIST = []
+    CORS_ALLOWED_ORIGINS = []
+    ALLOWED_HOSTS = ['*']
+    for h in os.getenv('ALLOWED_HOSTS').split(","):
+        CORS_ORIGIN_WHITELIST.append('https://{}'.format(h))
+        CORS_ALLOWED_ORIGINS.append('https://{}'.format(h))
+        ALLOWED_HOSTS.append(h)
 
 if STAGE == "DEV":
     CORS_ALLOW_ALL_ORIGINS = True
@@ -101,6 +95,7 @@ if STAGE == "DEV":
         'localhost',
         '127.0.0.1',
         '192.168.1.100',
+        '*',
     ]
     ALLOWED_HOSTS.extend(os.getenv('ALLOWED_HOSTS').split(","))
 

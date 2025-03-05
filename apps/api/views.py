@@ -1,5 +1,7 @@
 from django.db import connection
+from django.http import JsonResponse
 from django.core.cache import cache
+from django.core.paginator import Paginator, EmptyPage
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.http import HttpResponse
@@ -46,7 +48,8 @@ from apps.api.results import (results_match_list,
                               result_all_match_list,
                               user_vote_history,
                               results_users_download,
-                              result_users_list)
+                              result_users_list,
+                              results_match_archived_list)
 
 from apps.api.winners import (winner_month_choise)
 
@@ -76,6 +79,9 @@ def reset_sequence(table_name):
         cursor.execute(f"SELECT MAX(id) FROM {table_name}")
         max_id = cursor.fetchone()[0] or 1
         cursor.execute(f"ALTER SEQUENCE {table_name}_id_seq RESTART WITH {max_id + 1}")
+
+def home(request):
+    return JsonResponse({"message": "Bienvenido a la API"}, status=200)
 
 #       #       #       #       #       #       #       #       #       #       #       #
 # API View
@@ -753,6 +759,8 @@ class UserEditViewSet(views.APIView):
                 'email' : user.email,
                 'verification' : account.verification,
                 'type' : account.type,
+                'birthday' : account.birthday,
+                'phone' : account.phone,
                 'name' : user.first_name,
             }
 
@@ -1001,24 +1009,10 @@ class MatchUpdateListView(views.APIView):
 class MatchArchivedtView(views.APIView):
     permission_classes = [Staff]
 
-    def get(self, request):
+    def get(self, request, page):
 
         # Create match list
-        matchs_list = []
-
-        # Filter matchs and add in list
-        for match in Match.objects.filter(archived=True).order_by('-date','-time'):
-            matchs_list.append({
-                'id' : match.id,
-                'order' : match.order,
-                'scheme' : match.scheme,
-                'status' : match.status,
-                'date' : Format.new_date(match.date),
-                'time' : Format.new_time(match.time),
-                'league' : LeaguesSerializer(match.league).data,
-                'team_local' : TeamsSerializer(match.team_local).data,
-                'team_visit' : TeamsSerializer(match.team_visit).data
-            })
+        matchs_list = results_match_archived_list(10, page)
 
         return Response(matchs_list , status=status.HTTP_200_OK)
 
@@ -1394,6 +1388,31 @@ class WinnerEmptyView(views.APIView):
             winner.delete()
 
         return Response('delete', status=status.HTTP_200_OK)
+
+# Winner Annulate
+class WinnerAnnulateView(views.APIView):
+    permission_classes = [Admin]
+
+    def post(self, request):
+
+        try:
+
+            # Serializer validation
+            serializer = WinnerDetailsSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            # Get validated data
+            month = serializer.validated_data['month']
+            year = serializer.validated_data['year']
+
+            # Annulate winner
+            winner = Winner.objects.get(month=month,year=year)
+            winner.delete()
+
+            return Response('annulated', status=status.HTTP_200_OK)
+        
+        except:
+            return Response('error' , status=status.HTTP_400_BAD_REQUEST)
 
 #       #       #       #       #       #       #       #       #       #       #       #
 #       #       #       #       #       #       #       #       #       #       #       #

@@ -32,6 +32,7 @@ from apps.api.views import (CreateOwner,
                             WinnerDetailsView,
                             WinnerChoiseView,
                             WinnerEmptyView,
+                            WinnerAnnulateView,
                             
                             UsersDownloadViewSet,
                             UsersListViewSet,
@@ -40,7 +41,8 @@ from apps.api.views import (CreateOwner,
                             TeamsViewSet,
                             
                             JsonMatchs,
-                            JsonMatchsDetails)
+                            JsonMatchsDetails,
+                            JsonMatchsResults)
 
 router = SimpleRouter(trailing_slash=False)
 #router.register('users', UserstViewSet, basename='users')
@@ -69,12 +71,10 @@ urlpatterns = [
     # Teams players
     path('teams-players/<int:pk>', TeamPlayersView.as_view(), name='team-players'),
     path('teams-players-clear/<int:pk>', TeamPlayerClearView.as_view(), name='team-players-clear'),
-
-    # Players
     path('teams-players-details/<int:pk>', TeamPlayersDetailsView.as_view(), name='team-players-details'),
 
     # Matchs archived
-    path('matchs-archived', MatchArchivedtView.as_view(), name='match-archived'),
+    path('matchs-archived/<int:page>', MatchArchivedtView.as_view(), name='match-archived'),
 
     # Matchs branded
     path('matchs-branded/<int:page>', MatchListBrandedView.as_view(), name='matchs-branded'),
@@ -97,28 +97,30 @@ urlpatterns = [
     path('users-branded-resourses/<str:token>-<int:month>-<int:year>', UsersDownloadViewSet.as_view(), name='users-branded-resourses'),
     path('users/<int:pk>/edit', UserEditViewSet.as_view(), name='user-edit'),
 
+    # Winners actions
     path('winners-months', WinnerMonthsView.as_view(), name='winner-months'),
     path('winners-details', WinnerDetailsView.as_view(), name='winner-details'),
     path('winners-choise', WinnerChoiseView.as_view(), name='winner-choise'),
-    path('winners-empty', WinnerEmptyView.as_view(), name='winner-empty'),
+    path('winners-annulate', WinnerAnnulateView.as_view(), name='winner-annulate'),
 
     #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
     # VISITORS
 
     # Sign account
     path('create-owner', CreateOwner.as_view(), name='create-owner'),
-    path('sign-up', SignUpView.as_view(), name='signup'),
-    path('sign-in', SignInView.as_view(), name='signin'),
+    path('sign-up', SignUpView.as_view(), name='sign-up'),
+    path('sign-in', SignInView.as_view(), name='sign-in'),
     path('sign-in-backend', SignInBackendView.as_view(), name='signin-backend'),
 
     # Vote
     path('vote', VoteView.as_view(), name='vote'),
 
     # User History
-    path('user-history/<int:page>', UserHistory.as_view(), name='history'),
+    path('user-history/<int:page>', UserHistory.as_view(), name='user-history'),
 
     # Match
     path('match-list', JsonMatchs.as_view(), name='json-matchs'),
-    path('match-details/<int:pk>', JsonMatchsDetails.as_view(), name='json-matchs-details'),
+    path('match-election/<int:pk>', JsonMatchsDetails.as_view(), name='api-match-election'),
+    path('match-results/<int:pk>', JsonMatchsResults.as_view(), name='api-match-results'),
 
 ]

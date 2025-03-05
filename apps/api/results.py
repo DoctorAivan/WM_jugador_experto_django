@@ -16,7 +16,7 @@ from apps.api.serializers import (MatchsPlayersSerializer,
 #       #       #       #       #       #       #       #       #       #       #       #
 # Match results
 
-# Create match json file
+# Create match election
 def results_match(id):
 
     # Get match data
@@ -45,9 +45,6 @@ def results_match(id):
         match.scheme = False
     match.save()
 
-    # Get match votes results
-    results = match_top_three_players(id)
-
     # Create json structure
     match = {
         'league' : LeaguesSerializer(match.league).data,
@@ -68,6 +65,44 @@ def results_match(id):
                 'name' : match.team_visit.name,
                 'code' : match.team_visit.code,
                 'players' : players_visit
+            }
+        }
+    }
+
+    # ID for cache
+    cache_key = f"match_{id}"
+
+    # Refresh cache indefinitely
+    cache.set(cache_key, match, timeout=None)
+    return match
+
+# Create match results
+def results_match_votes(id):
+
+    # Get match data
+    match = Match.objects.get(pk=id)
+
+    # Get match votes results
+    results = match_top_three_players(id)
+
+    # Create json structure
+    match = {
+        'league' : LeaguesSerializer(match.league).data,
+        'match' : {
+            'id' : match.id,
+            'status' : match.status,
+            'date' : Format.new_date(match.date),
+            'time' : Format.new_time(match.time),
+            'date_digits' : match.date,
+            'local' : {
+                'id' : match.team_local.id,
+                'name' : match.team_local.name,
+                'code' : match.team_local.code
+            },
+            'visit' : {
+                'id' : match.team_visit.id,
+                'name' : match.team_visit.name,
+                'code' : match.team_visit.code
             },
             'results' : {
                 'list' : results['list'],
@@ -77,11 +112,13 @@ def results_match(id):
     }
 
     # ID for cache
-    cache_key = f"match_{id}"
+    cache_key = f"match_results_{id}"
 
     # Refresh cache indefinitely
-    cache.set(cache_key, match, timeout=15)
+    cache.set(cache_key, match, timeout=10)
     return match
+
+#       #       #       #       #       #       #       #       #       #       #       #
 
 # Delete match from cache
 def results_match_archive(id):
@@ -135,11 +172,13 @@ def results_match_list(matchs=[]):
     cache.set(cache_key, matchs_list, timeout=None)
     return matchs_list
 
+#       #       #       #       #       #       #       #       #       #       #       #
+
 # Get match top three voted players
 def match_top_three_players(id):
 
-    # Count all votes in match
-    total_votes = Vote.objects.filter(match_id=id).count()
+    # Set results list
+    limit = 5
 
     # Create query
     match_votes = (
@@ -153,8 +192,12 @@ def match_top_three_players(id):
         .annotate(
             votes=Count('id')
         )
-        .order_by('-votes')
+        .order_by('-votes')[:limit]
     )
+
+    # Count all votes in match
+    #total_votes = Vote.objects.filter(match_id=id).count()
+    total_votes = sum(item['votes'] for item in match_votes)
 
     # Create response and percentages
     players = [
@@ -167,7 +210,7 @@ def match_top_three_players(id):
             'votes': player['votes'],
             'percentage': Format.persentage(player['votes'], total_votes)
         }
-        for player in match_votes[:3]
+        for player in match_votes
     ]
 
     response = {
@@ -248,6 +291,12 @@ def result_all_match_list(page=1):
 # Get user profile votes history
 def user_vote_history(user_id, page=1):
 
+    # Set results list
+    list_results = 10
+
+    # Amount of points per game
+    matchs_points = 3
+
     # Count the total votes cast by the user
     matchs_voted = Vote.objects.filter(user_id=user_id).count()
 
@@ -272,11 +321,11 @@ def user_vote_history(user_id, page=1):
             'match_player__player__name',
             'match_player__team__name'
         )
-        .order_by('-match__date')
+        .order_by('-id')
     )
 
     # Create a pager with 10 results per page
-    paginator = Paginator(votes, 10)
+    paginator = Paginator(votes, list_results)
 
     try:
         # Get the requested page
@@ -314,17 +363,17 @@ def user_vote_history(user_id, page=1):
 
     history = {
         'votes': matchs_voted,
-        'points': Format.number(matchs_voted * 75),
+        'points': Format.number(matchs_voted * matchs_points),
         'page': page,
         'pages': paginator.num_pages,
         'matches': matches
     }
 
     # ID for cache
-    cache_key = f"history_{user_id}"
+    #cache_key = f"history_{user_id}"
 
     # Refresh cache indefinitely
-    cache.set(cache_key, history, timeout=15)
+    #cache.set(cache_key, history, timeout=15)
 
     return history
 
@@ -451,7 +500,7 @@ def result_users_list(page=1):
                 'accounts' : Format.number(accounts_total),
                 'verificated' : Format.number(accounts_verificated_total),
                 'verificated_p' : Format.persentage(accounts_verificated_total, accounts_total),
-                'not_verificated' : accounts_not_verificated_total,
+                'not_verificated' : Format.number(accounts_not_verificated_total),
                 'not_verificated_p' : Format.persentage(accounts_not_verificated_total, accounts_total),
                 'matches' : Format.number(matchs_total),
                 'votes' : Format.number(votes_total)
@@ -466,3 +515,76 @@ def result_users_list(page=1):
             'page': page,
             'pages': paginator.num_pages
         }
+
+#       #       #       #       #       #       #       #       #       #       #       #
+# Matchs Archived
+
+# Get user profile votes history
+def results_match_archived_list(limit, page=1):
+
+    # Count the total votes cast by the user
+    matchs_total = Match.objects.filter(archived=True).count()
+
+    # Set results list
+    list_results = limit
+
+    # Query to obtain the user's voting history
+    matchs = (
+        Match.objects.filter(archived=True)
+        .values(
+            'id',
+            'league__id',
+            'league__name',
+            'team_local__id',
+            'team_local__name',
+            'team_local__code',
+            'team_visit__id',
+            'team_visit__name',
+            'team_visit__code',
+            'date',
+            'time'
+        )
+        .order_by('-date','-time')
+    )
+
+    # Create a pager with results per page
+    paginator = Paginator(matchs, list_results)
+
+    try:
+        # Get the requested page
+        paginated_votes = paginator.page(page)
+
+    except EmptyPage:
+        # If the requested page is out of range, return an empty page
+        paginated_votes = []
+
+    # Create a structured list for history
+    matchs_list = [
+        {
+            'id' : match['id'],
+            'date' : Format.new_date(match['date']),
+            'time' : Format.new_time(match['time']),
+            'league' : {
+                'id' : match['league__id'],
+                'name' : match['league__name']
+            },
+            'team_local' : {
+                'id' : match['team_local__id'],
+                'name' : match['team_local__name'],
+                'code' : match['team_local__code']
+            },
+            'team_visit' : {
+                'id' : match['team_visit__id'],
+                'name' : match['team_visit__name'],
+                'code' : match['team_visit__code']
+            }
+        }
+        for match in paginated_votes
+    ]
+
+    return {
+        'totals': matchs_total,
+        'matchs': matchs_list,
+        'page': page,
+        'pages': paginator.num_pages
+    }

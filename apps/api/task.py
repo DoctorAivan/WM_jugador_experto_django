@@ -61,6 +61,11 @@ class Format:
         return f"{week_day} {day:02d} de {month}"
 
     @classmethod
+    def month_name(self, month):
+        month = self.months[month - 1]
+        return month
+
+    @classmethod
     def new_datetime(self, datetime):
 
         week_day = self.days[datetime.weekday()]

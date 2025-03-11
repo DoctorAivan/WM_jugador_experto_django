@@ -3,7 +3,8 @@ from django.conf import settings
 from django.http import HttpResponse
 
 from django.conf import settings
-from django.db.models import Count, F
+from django.db.models import Count, F, Sum
+from django.db.models.functions import TruncDate
 from django.core.cache import cache
 from django.core.paginator import Paginator, EmptyPage
 
@@ -587,4 +588,166 @@ def results_match_archived_list(limit, page=1):
         'matchs': matchs_list,
         'page': page,
         'pages': paginator.num_pages
+    }
+
+#       #       #       #       #       #       #       #       #       #       #       #
+
+# Get votes per day
+def results_votes_per_day(month, year):
+
+    # Filtrar los votos por el mes y año especificado
+    votes_by_day = (
+        Vote.objects
+        .filter(match__date__year=year, match__date__month=month)
+        .annotate(day=TruncDate('match__date'))
+        .values('day')
+        .annotate(votes=Count('id'))
+        .order_by('day')
+    )
+
+    # List
+    series = []
+    titles = []
+
+    # Add data to list
+    for vote in votes_by_day:
+        series.append(Format.number(vote['votes']))
+        titles.append(Format.new_date(vote['day']))
+
+    return {
+        'series' : series,
+        'titles' : titles
+    }
+
+# Get most voted matchs
+def results_most_voted_matchs(limit, month, year):
+    
+    # Filter votes within the specific month and year
+    match_votes = (
+        Vote.objects.filter(match__date__month=month, match__date__year=year)
+        .values(
+            match_name=F('match__league__name'),
+            league_code=F('match__league__description'),
+            team_local_name=F('match__team_local__name'),
+            team_local_code=F('match__team_local__code'),
+            team_visit_name=F('match__team_visit__name'),
+            team_visit_code=F('match__team_visit__code'),
+            match_date=F('match__date'),
+            match_time=F('match__time')
+        )
+        .annotate(total_votes=Count('id'))
+        .order_by('-total_votes')
+    )
+
+    # Calculate the total votes for the month
+    total_votes_month = match_votes.aggregate(total=Sum('total_votes'))['total'] or 1
+
+    # Build response with percentages
+    top_matches = [
+        {
+            'league': {
+                'name': match['match_name'],
+                'code': match['league_code']
+            },
+            'local': {
+                'name': match['team_local_name'],
+                'code': match['team_local_code']
+            },
+            'visit': {
+                'name': match['team_visit_name'],
+                'code': match['team_visit_code']
+            },
+            'date' : Format.new_date(match['match_date']),
+            'time' : Format.new_time(match['match_time']),
+            'votes': Format.number(match['total_votes']),
+            'percentage': f"{(match['total_votes'] / total_votes_month) * 100:.1f}%"
+        }
+        for match in match_votes[:limit]
+    ]
+
+    return {
+        "total": total_votes_month,
+        "data": top_matches
+    }
+
+# Get most voted teams
+def results_most_voted_teams(limit, month, year):
+    
+    # Count the total votes in the specified month and year
+    total_votes = Vote.objects.filter(match__date__month=month, match__date__year=year).count()
+
+    # Avoid division by zero
+    if total_votes == 0:
+        return {"total_votes": 0, "teams": []}
+
+    # Get the teams with the most votes
+    top_teams = (
+        Vote.objects.filter(match__date__month=month, match__date__year=year)
+        .values(
+            team_id=F('match_player__team__id'),
+            team_name=F('match_player__team__name'),
+            team_code=F('match_player__team__code')
+        )
+        .annotate(total_votes=Count('id'))
+        .order_by('-total_votes')[:limit]
+    )
+
+    # Format the data by adding the percentage
+    teams_list = [
+        {
+            "team_id": team["team_id"],
+            "team_name": team["team_name"],
+            "team_code": team["team_code"],
+            "votes": Format.number(team["total_votes"]),
+            "percentage": f"{(team['total_votes'] / total_votes) * 100:.1f}%"
+        }
+        for team in top_teams
+    ]
+
+    return {
+        "total": total_votes,
+        "data": teams_list
+    }
+
+# Get most voted players
+def results_most_voted_players(limit, month, year):
+
+    # Count the total votes in the specified month and year
+    total_votes = Vote.objects.filter(match__date__month=month, match__date__year=year).count()
+
+    # Avoid division by zero
+    if total_votes == 0:
+        return {"total_votes": 0, "players": []}
+
+    # Get the players with the most votes
+    top_players = (
+        Vote.objects.filter(match__date__month=month, match__date__year=year)
+        .values(
+            player_id=F('match_player__player__id'),
+            player_name=F('match_player__player__name'),
+            team_name=F('match_player__team__name'),
+            team_code=F('match_player__team__code')
+        )
+        .annotate(total_votes=Count('id'))
+        .order_by('-total_votes')[:limit]
+    )
+
+    # Format the data by adding the percentage
+    players_list = [
+        {
+            "player_id": player["player_id"],
+            "player_name": player["player_name"],
+            "team": {
+                "name": player["team_name"],
+                "code": player["team_code"]
+            },
+            "votes": Format.number(player["total_votes"]),
+            "percentage": f"{(player['total_votes'] / total_votes) * 100:.1f}%"
+        }
+        for player in top_players
+    ]
+
+    return {
+        "total": total_votes,
+        "data": players_list
     }

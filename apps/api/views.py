@@ -4,6 +4,7 @@ from django.core.cache import cache
 from django.core.paginator import Paginator, EmptyPage
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
+from django.utils.timezone import now
 from django.http import HttpResponse
 
 from core.permissions import Admin, Staff, Branded, Authenticated, Visitors
@@ -49,7 +50,11 @@ from apps.api.results import (results_match_list,
                               user_vote_history,
                               results_users_download,
                               result_users_list,
-                              results_match_archived_list)
+                              results_match_archived_list,
+                              results_votes_per_day,
+                              results_most_voted_matchs,
+                              results_most_voted_teams,
+                              results_most_voted_players)
 
 from apps.api.winners import (winner_month_choise)
 
@@ -1413,6 +1418,50 @@ class WinnerAnnulateView(views.APIView):
         
         except:
             return Response('error' , status=status.HTTP_400_BAD_REQUEST)
+
+#       #       #       #       #       #       #       #       #       #       #       #
+
+# Statistics
+class StatisticsView(views.APIView):
+    permission_classes = [Staff]
+
+    def get(self, request):
+
+        # Get cache data
+        response = cache.get(f"statistics")
+
+        # Validate cache data
+        if response is not None:
+            return Response( response , status = status.HTTP_200_OK)
+        else:
+            
+            # Settings
+            current_date = now()
+            limit = 5
+            year = current_date.year
+            month = current_date.month
+            month_name = Format.month_name(month)
+
+            # Create results list
+            result = {
+                'days' : results_votes_per_day(month, year),
+                'matchs' : results_most_voted_matchs(limit, month, year),
+                'teams' : results_most_voted_teams(limit, month, year),
+                'players' : results_most_voted_players(limit, month, year),
+                'title' : {
+                    'month' : month_name,
+                    'year' : year,
+                }
+            }
+
+            # ID for cache
+            cache_key = "statistics"
+
+            # Refresh cache indefinitely
+            cache.set(cache_key, result, timeout=20)
+
+            # Create response
+            return Response( result , status = status.HTTP_200_OK)
 
 #       #       #       #       #       #       #       #       #       #       #       #
 #       #       #       #       #       #       #       #       #       #       #       #

@@ -1,0 +1,54 @@
+{
+    "production": {
+        "django_settings": "core.settings",
+        "exclude": [
+            "boto3",
+            "dateutil",
+            "botocore",
+            "s3transfer",
+            "concurrent"
+        ],
+        "aws_region": "us-east-1",
+        "vpc_config" : {
+            "SubnetIds": [
+                "subnet-0ea20d8e7f93ae30b",
+                "subnet-03ff9015d231a48de",
+                "subnet-0edd9a4b3b3867ff6"
+            ],
+            "SecurityGroupIds": ["sg-0b5e0a27e77865c9d"]
+        },
+        "slim_handler": true,
+        "timeout_seconds": 60,
+        "profile_name": "Warner",
+        "project_name": "cl-je-api",
+        "runtime": "python3.12",
+        "s3_bucket": "cl-zappa-temp",
+        "remote_env": "s3://cl-je/production-environment.json"
+    },
+    "dev": {
+        "django_settings": "core.settings",
+        "exclude": [
+            "boto3",
+            "dateutil",
+            "botocore",
+            "s3transfer",
+            "concurrent"
+        ],
+        "aws_region": "us-east-1",
+        "vpc_config" : {
+            "SubnetIds": [
+                "subnet-0ea20d8e7f93ae30b",
+                "subnet-03ff9015d231a48de",
+                "subnet-0edd9a4b3b3867ff6"
+            ],
+            "SecurityGroupIds": ["sg-0b5e0a27e77865c9d"]
+        },
+        "slim_handler": true,
+        "timeout_seconds": 60,
+        "profile_name": "Warner",
+        "project_name": "cl-je-api",
+        "runtime": "python3.12",
+        "s3_bucket": "cl-zappa-temp",
+        "remote_env": "s3://cl-je/dev-environment.json"
+    }
+}

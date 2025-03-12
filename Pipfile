@@ -15,6 +15,10 @@ python-dotenv = "*"
 redis = "*"
 requests = "*"
 setuptools = "*"
+aws-psycopg2 = "*"
 
 [requires]
 python_version = "3.12"
+
+[dev-packages]
+zappa = "*"

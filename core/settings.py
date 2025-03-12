@@ -46,6 +46,7 @@ DB_PORT = os.getenv('DB_PORT')
 
 # ENV Redis
 REDIS_LOCATION = os.getenv('REDIS_LOCATION')
+REDIS_LOCATION_PORT = os.getenv('REDIS_LOCATION_PORT')
 REDIS_KEY_PREFIX = os.getenv('REDIS_KEY_PREFIX')
 
 #       #       #       #       #       #       #       #       #       #       #       #       #
@@ -168,8 +169,9 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': REDIS_LOCATION,
+        'LOCATION': "{}:{}".format(REDIS_LOCATION, REDIS_LOCATION_PORT)
         'OPTIONS': {
+            'DB': '1',
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         },
         'KEY_PREFIX': REDIS_KEY_PREFIX

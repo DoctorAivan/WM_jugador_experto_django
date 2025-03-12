@@ -44,6 +44,16 @@ class VoteSerializer(serializers.Serializer):
     match = serializers.IntegerField()
     player = serializers.IntegerField()
 
+# Profile edit
+class ProfileSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    email = serializers.EmailField()
+    phone = serializers.CharField(required=False)
+    year = serializers.CharField()
+    month = serializers.CharField()
+    day = serializers.CharField()
+    team = serializers.CharField()
+
 #       #       #       #       #       #       #       #       #       #       #       #
 
 # Leagues Serializer

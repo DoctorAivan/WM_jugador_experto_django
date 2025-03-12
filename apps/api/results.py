@@ -3,7 +3,8 @@ from django.conf import settings
 from django.http import HttpResponse
 
 from django.conf import settings
-from django.db.models import Count, F
+from django.db.models import Count, F, Sum
+from django.db.models.functions import TruncDate
 from django.core.cache import cache
 from django.core.paginator import Paginator, EmptyPage
 
@@ -16,7 +17,7 @@ from apps.api.serializers import (MatchsPlayersSerializer,
 #       #       #       #       #       #       #       #       #       #       #       #
 # Match results
 
-# Create match json file
+# Create match election
 def results_match(id):
 
     # Get match data
@@ -45,9 +46,6 @@ def results_match(id):
         match.scheme = False
     match.save()
 
-    # Get match votes results
-    results = match_top_three_players(id)
-
     # Create json structure
     match = {
         'league' : LeaguesSerializer(match.league).data,
@@ -68,6 +66,44 @@ def results_match(id):
                 'name' : match.team_visit.name,
                 'code' : match.team_visit.code,
                 'players' : players_visit
+            }
+        }
+    }
+
+    # ID for cache
+    cache_key = f"match_{id}"
+
+    # Refresh cache indefinitely
+    cache.set(cache_key, match, timeout=None)
+    return match
+
+# Create match results
+def results_match_votes(id):
+
+    # Get match data
+    match = Match.objects.get(pk=id)
+
+    # Get match votes results
+    results = match_top_three_players(id)
+
+    # Create json structure
+    match = {
+        'league' : LeaguesSerializer(match.league).data,
+        'match' : {
+            'id' : match.id,
+            'status' : match.status,
+            'date' : Format.new_date(match.date),
+            'time' : Format.new_time(match.time),
+            'date_digits' : match.date,
+            'local' : {
+                'id' : match.team_local.id,
+                'name' : match.team_local.name,
+                'code' : match.team_local.code
+            },
+            'visit' : {
+                'id' : match.team_visit.id,
+                'name' : match.team_visit.name,
+                'code' : match.team_visit.code
             },
             'results' : {
                 'list' : results['list'],
@@ -77,11 +113,13 @@ def results_match(id):
     }
 
     # ID for cache
-    cache_key = f"match_{id}"
+    cache_key = f"match_results_{id}"
 
     # Refresh cache indefinitely
-    cache.set(cache_key, match, timeout=15)
+    cache.set(cache_key, match, timeout=10)
     return match
+
+#       #       #       #       #       #       #       #       #       #       #       #
 
 # Delete match from cache
 def results_match_archive(id):
@@ -135,11 +173,13 @@ def results_match_list(matchs=[]):
     cache.set(cache_key, matchs_list, timeout=None)
     return matchs_list
 
+#       #       #       #       #       #       #       #       #       #       #       #
+
 # Get match top three voted players
 def match_top_three_players(id):
 
-    # Count all votes in match
-    total_votes = Vote.objects.filter(match_id=id).count()
+    # Set results list
+    limit = 5
 
     # Create query
     match_votes = (
@@ -153,8 +193,12 @@ def match_top_three_players(id):
         .annotate(
             votes=Count('id')
         )
-        .order_by('-votes')
+        .order_by('-votes')[:limit]
     )
+
+    # Count all votes in match
+    #total_votes = Vote.objects.filter(match_id=id).count()
+    total_votes = sum(item['votes'] for item in match_votes)
 
     # Create response and percentages
     players = [
@@ -167,7 +211,7 @@ def match_top_three_players(id):
             'votes': player['votes'],
             'percentage': Format.persentage(player['votes'], total_votes)
         }
-        for player in match_votes[:3]
+        for player in match_votes
     ]
 
     response = {
@@ -248,6 +292,12 @@ def result_all_match_list(page=1):
 # Get user profile votes history
 def user_vote_history(user_id, page=1):
 
+    # Set results list
+    list_results = 10
+
+    # Amount of points per game
+    matchs_points = 3
+
     # Count the total votes cast by the user
     matchs_voted = Vote.objects.filter(user_id=user_id).count()
 
@@ -272,11 +322,11 @@ def user_vote_history(user_id, page=1):
             'match_player__player__name',
             'match_player__team__name'
         )
-        .order_by('-match__date')
+        .order_by('-id')
     )
 
     # Create a pager with 10 results per page
-    paginator = Paginator(votes, 10)
+    paginator = Paginator(votes, list_results)
 
     try:
         # Get the requested page
@@ -314,17 +364,17 @@ def user_vote_history(user_id, page=1):
 
     history = {
         'votes': matchs_voted,
-        'points': Format.number(matchs_voted * 75),
+        'points': Format.number(matchs_voted * matchs_points),
         'page': page,
         'pages': paginator.num_pages,
         'matches': matches
     }
 
     # ID for cache
-    cache_key = f"history_{user_id}"
+    #cache_key = f"history_{user_id}"
 
     # Refresh cache indefinitely
-    cache.set(cache_key, history, timeout=15)
+    #cache.set(cache_key, history, timeout=15)
 
     return history
 
@@ -451,7 +501,7 @@ def result_users_list(page=1):
                 'accounts' : Format.number(accounts_total),
                 'verificated' : Format.number(accounts_verificated_total),
                 'verificated_p' : Format.persentage(accounts_verificated_total, accounts_total),
-                'not_verificated' : accounts_not_verificated_total,
+                'not_verificated' : Format.number(accounts_not_verificated_total),
                 'not_verificated_p' : Format.persentage(accounts_not_verificated_total, accounts_total),
                 'matches' : Format.number(matchs_total),
                 'votes' : Format.number(votes_total)
@@ -466,3 +516,238 @@ def result_users_list(page=1):
             'page': page,
             'pages': paginator.num_pages
         }
+
+#       #       #       #       #       #       #       #       #       #       #       #
+# Matchs Archived
+
+# Get user profile votes history
+def results_match_archived_list(limit, page=1):
+
+    # Count the total votes cast by the user
+    matchs_total = Match.objects.filter(archived=True).count()
+
+    # Set results list
+    list_results = limit
+
+    # Query to obtain the user's voting history
+    matchs = (
+        Match.objects.filter(archived=True)
+        .values(
+            'id',
+            'league__id',
+            'league__name',
+            'team_local__id',
+            'team_local__name',
+            'team_local__code',
+            'team_visit__id',
+            'team_visit__name',
+            'team_visit__code',
+            'date',
+            'time'
+        )
+        .order_by('-date','-time')
+    )
+
+    # Create a pager with results per page
+    paginator = Paginator(matchs, list_results)
+
+    try:
+        # Get the requested page
+        paginated_votes = paginator.page(page)
+
+    except EmptyPage:
+        # If the requested page is out of range, return an empty page
+        paginated_votes = []
+
+    # Create a structured list for history
+    matchs_list = [
+        {
+            'id' : match['id'],
+            'date' : Format.new_date(match['date']),
+            'time' : Format.new_time(match['time']),
+            'league' : {
+                'id' : match['league__id'],
+                'name' : match['league__name']
+            },
+            'team_local' : {
+                'id' : match['team_local__id'],
+                'name' : match['team_local__name'],
+                'code' : match['team_local__code']
+            },
+            'team_visit' : {
+                'id' : match['team_visit__id'],
+                'name' : match['team_visit__name'],
+                'code' : match['team_visit__code']
+            }
+        }
+        for match in paginated_votes
+    ]
+
+    return {
+        'totals': matchs_total,
+        'matchs': matchs_list,
+        'page': page,
+        'pages': paginator.num_pages
+    }
+
+#       #       #       #       #       #       #       #       #       #       #       #
+
+# Get votes per day
+def results_votes_per_day(month, year):
+
+    # Filtrar los votos por el mes y año especificado
+    votes_by_day = (
+        Vote.objects
+        .filter(match__date__year=year, match__date__month=month)
+        .annotate(day=TruncDate('match__date'))
+        .values('day')
+        .annotate(votes=Count('id'))
+        .order_by('day')
+    )
+
+    # List
+    series = []
+    titles = []
+
+    # Add data to list
+    for vote in votes_by_day:
+        series.append(Format.number(vote['votes']))
+        titles.append(Format.new_date(vote['day']))
+
+    return {
+        'series' : series,
+        'titles' : titles
+    }
+
+# Get most voted matchs
+def results_most_voted_matchs(limit, month, year):
+    
+    # Filter votes within the specific month and year
+    match_votes = (
+        Vote.objects.filter(match__date__month=month, match__date__year=year)
+        .values(
+            match_name=F('match__league__name'),
+            league_code=F('match__league__description'),
+            team_local_name=F('match__team_local__name'),
+            team_local_code=F('match__team_local__code'),
+            team_visit_name=F('match__team_visit__name'),
+            team_visit_code=F('match__team_visit__code'),
+            match_date=F('match__date'),
+            match_time=F('match__time')
+        )
+        .annotate(total_votes=Count('id'))
+        .order_by('-total_votes')
+    )
+
+    # Calculate the total votes for the month
+    total_votes_month = match_votes.aggregate(total=Sum('total_votes'))['total'] or 1
+
+    # Build response with percentages
+    top_matches = [
+        {
+            'league': {
+                'name': match['match_name'],
+                'code': match['league_code']
+            },
+            'local': {
+                'name': match['team_local_name'],
+                'code': match['team_local_code']
+            },
+            'visit': {
+                'name': match['team_visit_name'],
+                'code': match['team_visit_code']
+            },
+            'date' : Format.new_date(match['match_date']),
+            'time' : Format.new_time(match['match_time']),
+            'votes': Format.number(match['total_votes']),
+            'percentage': f"{(match['total_votes'] / total_votes_month) * 100:.1f}%"
+        }
+        for match in match_votes[:limit]
+    ]
+
+    return {
+        "total": total_votes_month,
+        "data": top_matches
+    }
+
+# Get most voted teams
+def results_most_voted_teams(limit, month, year):
+    
+    # Count the total votes in the specified month and year
+    total_votes = Vote.objects.filter(match__date__month=month, match__date__year=year).count()
+
+    # Avoid division by zero
+    if total_votes == 0:
+        return {"total_votes": 0, "teams": []}
+
+    # Get the teams with the most votes
+    top_teams = (
+        Vote.objects.filter(match__date__month=month, match__date__year=year)
+        .values(
+            team_id=F('match_player__team__id'),
+            team_name=F('match_player__team__name'),
+            team_code=F('match_player__team__code')
+        )
+        .annotate(total_votes=Count('id'))
+        .order_by('-total_votes')[:limit]
+    )
+
+    # Format the data by adding the percentage
+    teams_list = [
+        {
+            "team_id": team["team_id"],
+            "team_name": team["team_name"],
+            "team_code": team["team_code"],
+            "votes": Format.number(team["total_votes"]),
+            "percentage": f"{(team['total_votes'] / total_votes) * 100:.1f}%"
+        }
+        for team in top_teams
+    ]
+
+    return {
+        "total": total_votes,
+        "data": teams_list
+    }
+
+# Get most voted players
+def results_most_voted_players(limit, month, year):
+
+    # Count the total votes in the specified month and year
+    total_votes = Vote.objects.filter(match__date__month=month, match__date__year=year).count()
+
+    # Avoid division by zero
+    if total_votes == 0:
+        return {"total_votes": 0, "players": []}
+
+    # Get the players with the most votes
+    top_players = (
+        Vote.objects.filter(match__date__month=month, match__date__year=year)
+        .values(
+            player_id=F('match_player__player__id'),
+            player_name=F('match_player__player__name'),
+            team_name=F('match_player__team__name'),
+            team_code=F('match_player__team__code')
+        )
+        .annotate(total_votes=Count('id'))
+        .order_by('-total_votes')[:limit]
+    )
+
+    # Format the data by adding the percentage
+    players_list = [
+        {
+            "player_id": player["player_id"],
+            "player_name": player["player_name"],
+            "team": {
+                "name": player["team_name"],
+                "code": player["team_code"]
+            },
+            "votes": Format.number(player["total_votes"]),
+            "percentage": f"{(player['total_votes'] / total_votes) * 100:.1f}%"
+        }
+        for player in top_players
+    ]
+
+    return {
+        "total": total_votes,
+        "data": players_list
+    }

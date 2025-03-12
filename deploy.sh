@@ -7,9 +7,9 @@ PROJECT="wbd_jugador_experto"
 
 # Run docker compose
 if [ "$ACTION" = "up" ]; then
-  docker-compose -f docker/docker-compose.yml -p $PROJECT up -d
+  docker-compose -f docker-compose.yml -p $PROJECT up -d
 elif [ "$ACTION" = "down" ]; then
-  docker-compose -f docker/docker-compose.yml -p $PROJECT down
+  docker-compose -f docker-compose.yml -p $PROJECT down
 else
   echo "Action must be \"up\" or \"down\""
   exit 1

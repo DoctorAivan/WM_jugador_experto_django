@@ -1,0 +1,15 @@
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    container_name: backend
+    restart: always
+    environment:
+      - STAGE=${STAGE}
+    volumes:
+      - .:/app
+    ports:
+      - 80:8000
+

@@ -17,21 +17,32 @@ from pathlib import Path
 #       #       #       #       #       #       #       #       #       #       #       #       #
 # ENVIROMMENT VARIABLES
 
-# Load variables
-load_dotenv()
+STAGE = os.getenv('STAGE', "DEV")  # (dev, production)
+STAGE = STAGE.upper()
 
 # ENV Django
-PRODUCTION = os.getenv('PRODUCTION')
+if STAGE == "DEV":
+    DEBUG = True
+    load_dotenv("development.env")
+elif STAGE == "PRODUCTION":
+    DEBUG = False
+
 SECRET_KEY = os.getenv('SECRET_KEY')
+
+# Load variables
+# Production load variables from remote env file specified in zappa_settings.json
+if STAGE == "PRODUCTION":
+    DEBUG = False
+else:
+    DEBUG = True
+    load_dotenv("development.env")
 
 # ENV Database
 DB_NAME = os.getenv('DB_NAME')
 DB_USER = os.getenv('DB_USER')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
 DB_HOST = os.getenv('DB_HOST')
-
-# ENV Allowed host
-ALLOWED_HOSTS_CLOUDFRONT = os.getenv('ALLOWED_HOSTS_CLOUDFRONT')
+DB_PORT = os.getenv('DB_PORT')
 
 # ENV Redis
 REDIS_LOCATION = os.getenv('REDIS_LOCATION')
@@ -41,13 +52,6 @@ REDIS_KEY_PREFIX = os.getenv('REDIS_KEY_PREFIX')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-if PRODUCTION == "1":
-    # Production settings
-    DEBUG = False
-else:
-    # Development settings
-    DEBUG = True
 
 CORS_ALLOW_HEADERS = [
     "accept",
@@ -62,25 +66,38 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS definitions
+if STAGE == "PRODUCTION":
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ORIGIN_WHITELIST = []
+    CORS_ALLOWED_ORIGINS = []
+    ALLOWED_HOSTS = ['*']
+    for h in os.getenv('ALLOWED_HOSTS').split(","):
+        CORS_ORIGIN_WHITELIST.append('https://{}'.format(h))
+        CORS_ALLOWED_ORIGINS.append('https://{}'.format(h))
+        ALLOWED_HOSTS.append(h)
 
-CORS_ORIGIN_WHITELIST = (
-    'http://localhost:5173',
-    'http://192.168.1.100:5173',
-)
+if STAGE == "DEV":
+    CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://192.168.1.100:5173',
-]
+    CORS_ORIGIN_WHITELIST = (
+        'http://localhost:5173',
+        'http://192.168.1.100:5173',
+    )
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '192.168.1.100',
-    ALLOWED_HOSTS_CLOUDFRONT,
-]
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://192.168.1.100:5173',
+    ]
+
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        '192.168.1.100',
+        '*',
+    ]
+    ALLOWED_HOSTS.extend(os.getenv('ALLOWED_HOSTS').split(","))
 
 # Application definition
 INSTALLED_APPS = [
@@ -143,7 +160,7 @@ DATABASES = {
         'USER': DB_USER,
         'PASSWORD': DB_PASSWORD,
         'HOST': DB_HOST,
-        'PORT': "5432",
+        'PORT': DB_PORT,
     }
 }
 
@@ -200,7 +217,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-if PRODUCTION == "1":
+if STAGE == "PRODUCTION":
     REST_FRAMEWORK = {
         'DEFAULT_RENDERER_CLASSES': (
             'rest_framework.renderers.JSONRenderer',

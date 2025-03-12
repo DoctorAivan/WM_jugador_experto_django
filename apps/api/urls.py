@@ -33,6 +33,8 @@ from apps.api.views import (CreateOwner,
                             WinnerChoiseView,
                             WinnerEmptyView,
                             WinnerAnnulateView,
+
+                            StatisticsView,
                             
                             UsersDownloadViewSet,
                             UsersListViewSet,
@@ -102,6 +104,9 @@ urlpatterns = [
     path('winners-details', WinnerDetailsView.as_view(), name='winner-details'),
     path('winners-choise', WinnerChoiseView.as_view(), name='winner-choise'),
     path('winners-annulate', WinnerAnnulateView.as_view(), name='winner-annulate'),
+
+    # Statistics
+    path('statistics-dashboard', StatisticsView.as_view(), name='statistics-dashboard'),
 
     #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
     # VISITORS

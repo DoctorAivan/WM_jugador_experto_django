@@ -1,7 +1,5 @@
 from django.db import connection
-from django.http import JsonResponse
 from django.core.cache import cache
-from django.core.paginator import Paginator, EmptyPage
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.utils.timezone import now
@@ -34,6 +32,7 @@ from apps.api.serializers import (SignUpSerializer,
                                   UsersSerializer,
                                   SignResponseSerializer,
                                   SignBackendResponseSerializer,
+                                  ProfileSerializer,
                                   LeaguesSerializer,
                                   TeamsSerializer,
                                   PlayersSerializer,
@@ -84,9 +83,6 @@ def reset_sequence(table_name):
         cursor.execute(f"SELECT MAX(id) FROM {table_name}")
         max_id = cursor.fetchone()[0] or 1
         cursor.execute(f"ALTER SEQUENCE {table_name}_id_seq RESTART WITH {max_id + 1}")
-
-def home(request):
-    return JsonResponse({"message": "Bienvenido a la API"}, status=200)
 
 #       #       #       #       #       #       #       #       #       #       #       #
 # API View
@@ -322,7 +318,7 @@ class VoteView(views.APIView):
 
 #       #       #       #       #       #       #       #       #       #       #       #
 
-# Vote Action
+# User History
 class UserHistory(views.APIView):
     permission_classes = [Authenticated]
     authentication_classes = [TokenAuthentication]
@@ -337,19 +333,88 @@ class UserHistory(views.APIView):
             response = user_vote_history(user.id, page)
             return Response( response , status = status.HTTP_200_OK)
 
-            """
-            # Get cache data
-            response = cache.get(f"history_{user.id}")
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Validate cache data
-            if response is not None:
-                return Response( response , status = status.HTTP_200_OK)
+# Profile edit
+class UserProfileView(views.APIView):
+    permission_classes = [Authenticated]
+    authentication_classes = [TokenAuthentication]
 
-            # Set cache data
-            response = user_vote_history(user.id, page)
-            return Response( response , status = status.HTTP_200_OK)
-            """
+    def get(self, request):
+        try:
 
+            # Create instances
+            user = request.user
+
+            # Get account data
+            account = Account.objects.get(user=user)
+
+            # Create response
+            response = {
+                'name' : user.first_name,
+                'email' : user.email,
+                'phone' : account.phone,
+                'year' : account.birthday.year,
+                'month' : account.birthday.month,
+                'day' : account.birthday.day,
+                'team' : account.team,
+            }
+
+            return Response(response, status = status.HTTP_200_OK)
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request):
+        try:
+                
+            # Create instances
+            user = request.user
+
+            # Get account data
+            account = Account.objects.get(user=user)
+
+            # Get token
+            token = Token.objects.get(user=user)
+
+            # Serializer validation
+            serializer = ProfileSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            # Get validated data
+            name = serializer.validated_data['name']
+            username = serializer.validated_data['email']
+            email = serializer.validated_data['email']
+            phone = request.data['phone']
+            year = serializer.validated_data['year']
+            month = serializer.validated_data['month']
+            day = serializer.validated_data['day']
+            team = serializer.validated_data['team']
+
+            # Create birthday
+            birthday = f"{year}-{month}-{day}"
+
+            # Save user
+            user.first_name = name
+            user.username = username
+            user.email = email
+            user.save()
+
+            # Save Account
+            account.birthday = birthday
+            account.phone = phone
+            account.team = team
+            account.save()
+
+            # Create json response
+            response = {
+                'id': user.id,
+                'name': name,
+                'team': account.team,
+                'token': token.key
+            }
+
+            return Response(response, status = status.HTTP_200_OK)
         except:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
 

@@ -7,6 +7,7 @@ from apps.api.views import (CreateOwner,
                             SignInBackendView,
                             VoteView,
                             UserHistory,
+                            UserProfileView,
                             LeagueTeamsView,
                             LeagueWithTeamsView,
                             TeamPlayersView,
@@ -31,7 +32,6 @@ from apps.api.views import (CreateOwner,
                             WinnerMonthsView,
                             WinnerDetailsView,
                             WinnerChoiseView,
-                            WinnerEmptyView,
                             WinnerAnnulateView,
 
                             StatisticsView,
@@ -41,7 +41,7 @@ from apps.api.views import (CreateOwner,
                             UserEditViewSet,
                             LeaguesViewSet,
                             TeamsViewSet,
-                            
+
                             JsonMatchs,
                             JsonMatchsDetails,
                             JsonMatchsResults)
@@ -122,6 +122,7 @@ urlpatterns = [
 
     # User History
     path('user-history/<int:page>', UserHistory.as_view(), name='user-history'),
+    path('user-profile', UserProfileView.as_view(), name='user-profile'),
 
     # Match
     path('match-list', JsonMatchs.as_view(), name='json-matchs'),

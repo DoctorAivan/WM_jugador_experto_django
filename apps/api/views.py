@@ -1499,23 +1499,30 @@ class StatisticsView(views.APIView):
         if response is not None:
             return Response( response , status = status.HTTP_200_OK)
         else:
-            
-            # Settings
-            current_date = now()
+
+            # Limit of results
             limit = 5
+
+            # Filter Settings
+            current_date = now()
             year = current_date.year
             month = current_date.month
             month_name = Format.month_name(month)
+            previous_month = month - 1 if month > 1 else 12
+            previous_month_name = Format.month_name(previous_month)
+            previous_year = year if month > 1 else year - 1
 
             # Create results list
             result = {
-                'days' : results_votes_per_day(month, year),
-                'matchs' : results_most_voted_matchs(limit, month, year),
-                'teams' : results_most_voted_teams(limit, month, year),
-                'players' : results_most_voted_players(limit, month, year),
+                'days' : results_votes_per_day(month, previous_month, year, previous_year),
+                'matchs' : results_most_voted_matchs(limit, month, previous_month, year, previous_year),
+                'teams' : results_most_voted_teams(limit, month, previous_month, year, previous_year),
+                'players' : results_most_voted_players(limit, month, previous_month, year, previous_year),
                 'title' : {
                     'month' : month_name,
+                    'previous_month' : previous_month_name,
                     'year' : year,
+                    'previous_year' : previous_year
                 }
             }
 

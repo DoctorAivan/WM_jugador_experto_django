@@ -3,7 +3,7 @@ from django.conf import settings
 from django.http import HttpResponse
 
 from django.conf import settings
-from django.db.models import Count, F, Sum
+from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncDate
 from django.core.cache import cache
 from django.core.paginator import Paginator, EmptyPage
@@ -593,12 +593,14 @@ def results_match_archived_list(limit, page=1):
 #       #       #       #       #       #       #       #       #       #       #       #
 
 # Get votes per day
-def results_votes_per_day(month, year):
+def results_votes_per_day(month, previous_month, year, previous_year):
 
     # Filtrar los votos por el mes y año especificado
     votes_by_day = (
-        Vote.objects
-        .filter(match__date__year=year, match__date__month=month)
+        Vote.objects.filter(
+            Q(match__date__year=year, match__date__month=month) |
+            Q(match__date__year=previous_year, match__date__month=previous_month)
+        )
         .annotate(day=TruncDate('match__date'))
         .values('day')
         .annotate(votes=Count('id'))
@@ -611,7 +613,7 @@ def results_votes_per_day(month, year):
 
     # Add data to list
     for vote in votes_by_day:
-        series.append(Format.number(vote['votes']))
+        series.append(vote['votes'])
         titles.append(Format.new_date(vote['day']))
 
     return {
@@ -620,11 +622,14 @@ def results_votes_per_day(month, year):
     }
 
 # Get most voted matchs
-def results_most_voted_matchs(limit, month, year):
+def results_most_voted_matchs(limit, month, previous_month, year, previous_year):
     
     # Filter votes within the specific month and year
     match_votes = (
-        Vote.objects.filter(match__date__month=month, match__date__year=year)
+        Vote.objects.filter(
+            Q(match__date__year=year, match__date__month=month) |
+            Q(match__date__year=previous_year, match__date__month=previous_month)
+        )
         .values(
             match_name=F('match__league__name'),
             league_code=F('match__league__description'),
@@ -671,7 +676,7 @@ def results_most_voted_matchs(limit, month, year):
     }
 
 # Get most voted teams
-def results_most_voted_teams(limit, month, year):
+def results_most_voted_teams(limit, month, previous_month, year, previous_year):
     
     # Count the total votes in the specified month and year
     total_votes = Vote.objects.filter(match__date__month=month, match__date__year=year).count()
@@ -682,7 +687,10 @@ def results_most_voted_teams(limit, month, year):
 
     # Get the teams with the most votes
     top_teams = (
-        Vote.objects.filter(match__date__month=month, match__date__year=year)
+        Vote.objects.filter(
+            Q(match__date__year=year, match__date__month=month) |
+            Q(match__date__year=previous_year, match__date__month=previous_month)
+        )
         .values(
             team_id=F('match_player__team__id'),
             team_name=F('match_player__team__name'),
@@ -710,7 +718,7 @@ def results_most_voted_teams(limit, month, year):
     }
 
 # Get most voted players
-def results_most_voted_players(limit, month, year):
+def results_most_voted_players(limit, month, previous_month, year, previous_year):
 
     # Count the total votes in the specified month and year
     total_votes = Vote.objects.filter(match__date__month=month, match__date__year=year).count()
@@ -721,7 +729,10 @@ def results_most_voted_players(limit, month, year):
 
     # Get the players with the most votes
     top_players = (
-        Vote.objects.filter(match__date__month=month, match__date__year=year)
+        Vote.objects.filter(
+            Q(match__date__year=year, match__date__month=month) |
+            Q(match__date__year=previous_year, match__date__month=previous_month)
+        )
         .values(
             player_id=F('match_player__player__id'),
             player_name=F('match_player__player__name'),

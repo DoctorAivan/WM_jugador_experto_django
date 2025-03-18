@@ -12,6 +12,7 @@ from apps.api.views import (CreateOwner,
                             LeagueWithTeamsView,
                             TeamPlayersView,
                             TeamPlayersDetailsView,
+                            TeamPlayerLoteView,
                             TeamPlayerClearView,
                             MatchListView,
                             MatchListBrandedView,
@@ -74,6 +75,7 @@ urlpatterns = [
     path('teams-players/<int:pk>', TeamPlayersView.as_view(), name='team-players'),
     path('teams-players-clear/<int:pk>', TeamPlayerClearView.as_view(), name='team-players-clear'),
     path('teams-players-details/<int:pk>', TeamPlayersDetailsView.as_view(), name='team-players-details'),
+    path('teams-players-lote/<int:pk>', TeamPlayerLoteView.as_view(), name='teams-players-lote'),
 
     # Matchs archived
     path('matchs-archived/<int:page>', MatchArchivedtView.as_view(), name='match-archived'),

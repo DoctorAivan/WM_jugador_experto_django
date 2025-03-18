@@ -768,6 +768,59 @@ class TeamPlayerClearView(views.APIView):
 
         return Response('clear team' , status=status.HTTP_200_OK)
 
+# Team Players Lote
+class TeamPlayerLoteView(views.APIView):
+    permission_classes = [Admin]
+
+    def post(self, request, pk):
+        try:
+
+            import csv
+            from io import StringIO
+
+            # Get team ID
+            team_id = pk
+
+            # Get team data
+            team = Team.objects.get(pk=team_id)
+
+            # Get player list
+            body = request.body.decode('utf-8')
+
+            # Usar StringIO para manejar el CSV en memoria
+            csv_file = StringIO(body)
+            csv_reader = csv.reader(csv_file)
+
+            # Create player list
+            players = []
+
+            # Iterate data
+            for row in csv_reader:
+
+                # Validate lenght of row
+                if len(row) == 3:
+                    name, type, number = row
+
+                    players.append({
+                        "name": name,
+                        "type": type,
+                        "number": number
+                    })
+
+                    # Create player
+                    player = Player.objects.create(
+                        name = name,
+                        type = type,
+                        number = number
+                    )
+
+                    # Add player to team
+                    team.players.add(player)
+
+            return Response( players , status=status.HTTP_200_OK)
+        except:
+            return Response('ERROR' , status=status.HTTP_400_BAD_REQUEST)
+
 #       #       #       #       #       #       #       #       #       #       #       #
 
 # Users download list

@@ -10,6 +10,9 @@ from apps.api.models import (Account, Winner, Vote)
 # Get winners month choise users
 def winner_month_choise(month, year):
 
+    # Winner max choise
+    winner_max_choise = 20
+
     # Get IDs of users who are already winners in the year
     winner_users = Winner.objects.filter(year=year).values_list('user_id', flat=True)
 
@@ -23,7 +26,7 @@ def winner_month_choise(month, year):
         .exclude(user_id__in=winner_users)
         .values('user__id')
         .annotate(total_votes=Count('id'))
-        .order_by('-total_votes')[:100]
+        .order_by('-total_votes')[:winner_max_choise]
     )
 
     # Validate possible winners lenght
@@ -41,6 +44,7 @@ def winner_month_choise(month, year):
 
         # Get account details
         account = Account.objects.get(user=winner['user__id'])
+        total_votes = Vote.objects.filter(user=winner['user__id']).count()
 
         # Create response
         response = {
@@ -54,7 +58,8 @@ def winner_month_choise(month, year):
                 'phone' : account.phone,
                 'age' : Format.age(account.birthday),
                 'joined' : Format.new_datetime(account.user.date_joined),
-                'created' : Format.new_datetime(winner_new.created)
+                'created' : Format.new_datetime(winner_new.created),
+                'votes' : total_votes
             }
         }
 

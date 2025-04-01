@@ -197,8 +197,8 @@ def match_top_three_players(id):
     )
 
     # Count all votes in match
-    #total_votes = Vote.objects.filter(match_id=id).count()
-    total_votes = sum(item['votes'] for item in match_votes)
+    total_votes = Vote.objects.filter(match_id=id).count()
+    #total_votes = sum(item['votes'] for item in match_votes)
 
     # Create response and percentages
     players = [

@@ -57,6 +57,8 @@ from apps.api.results import (results_match_list,
 
 from apps.api.winners import (winner_month_choise)
 
+#       #       #       #       #       #       #       #       #       #       #       #
+
 # Index 200
 def index(request):
     return HttpResponse('.')
@@ -770,7 +772,7 @@ class TeamPlayerClearView(views.APIView):
 
 # Team Players Lote
 class TeamPlayerLoteView(views.APIView):
-    permission_classes = [Admin]
+    permission_classes = [Staff]
 
     def post(self, request, pk):
         try:
@@ -1451,6 +1453,7 @@ class WinnerDetailsView(views.APIView):
             # Get winner details
             winner = Winner.objects.get(month=month,year=year)
             account = Account.objects.get(user=winner.user)
+            total_votes = Vote.objects.filter(user=winner.user).count()
 
             # Create response
             response = {
@@ -1464,7 +1467,8 @@ class WinnerDetailsView(views.APIView):
                     'phone' : account.phone,
                     'age' : Format.age(account.birthday),
                     'joined' : Format.new_datetime(winner.user.date_joined),
-                    'created' : Format.new_datetime(winner.created)
+                    'created' : Format.new_datetime(winner.created),
+                    'votes' : total_votes
                 }
             }
 

@@ -16,6 +16,11 @@ class Branded(BasePermission):
     def has_permission(self, request, view):
         return check_user_permission(request.user, ["A","B","C"])
 
+# Validate branded permission
+class Switch(BasePermission):
+    def has_permission(self, request, view):
+        return check_user_permission(request.user, ["A","B","C","E"])
+
 # Validate authenticated permission
 class Authenticated(BasePermission):
     def has_permission(self, request, view):

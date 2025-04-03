@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate, login
 from django.utils.timezone import now
 from django.http import HttpResponse
 
-from core.permissions import Admin, Staff, Branded, Authenticated, Visitors
+from core.permissions import Admin, Staff, Branded, Switch, Authenticated, Visitors
 
 from rest_framework import viewsets
 from rest_framework.views import APIView
@@ -922,7 +922,7 @@ class UserEditViewSet(views.APIView):
 
 # Matchs list
 class MatchListView(views.APIView):
-    permission_classes = [Staff]
+    permission_classes = [Switch]
 
     def get(self, request):
 
@@ -1208,7 +1208,7 @@ class MatchSettingsView(views.APIView):
 
 # Match Results
 class MatchResultsView(views.APIView):
-    permission_classes = [Branded]
+    permission_classes = [Switch]
 
     def get(self, request, pk):
 

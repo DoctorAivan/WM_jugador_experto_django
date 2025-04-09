@@ -215,7 +215,7 @@ def match_top_three_players(id):
     ]
 
     response = {
-        'total' : Format.number(total_votes),
+        'total' : total_votes,
         'list' : players
     }
 
@@ -627,8 +627,7 @@ def results_most_voted_matchs(limit, month, previous_month, year, previous_year)
     # Filter votes within the specific month and year
     match_votes = (
         Vote.objects.filter(
-            Q(match__date__year=year, match__date__month=month) |
-            Q(match__date__year=previous_year, match__date__month=previous_month)
+            Q(match__date__year=year, match__date__month=month)
         )
         .values(
             match_name=F('match__league__name'),
@@ -685,11 +684,12 @@ def results_most_voted_teams(limit, month, previous_month, year, previous_year):
     if total_votes == 0:
         return {"total_votes": 0, "teams": []}
 
+    # Q(match__date__year=previous_year, match__date__month=previous_month)
+
     # Get the teams with the most votes
     top_teams = (
         Vote.objects.filter(
-            Q(match__date__year=year, match__date__month=month) |
-            Q(match__date__year=previous_year, match__date__month=previous_month)
+            Q(match__date__year=year, match__date__month=month)
         )
         .values(
             team_id=F('match_player__team__id'),
@@ -730,8 +730,7 @@ def results_most_voted_players(limit, month, previous_month, year, previous_year
     # Get the players with the most votes
     top_players = (
         Vote.objects.filter(
-            Q(match__date__year=year, match__date__month=month) |
-            Q(match__date__year=previous_year, match__date__month=previous_month)
+            Q(match__date__year=year, match__date__month=month)
         )
         .values(
             player_id=F('match_player__player__id'),

@@ -1518,7 +1518,7 @@ class WinnerEmptyView(views.APIView):
 
 # Winner Annulate
 class WinnerAnnulateView(views.APIView):
-    permission_classes = [Admin]
+    permission_classes = [Branded]
 
     def post(self, request):
 

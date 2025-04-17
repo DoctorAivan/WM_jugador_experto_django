@@ -251,18 +251,15 @@ class SignInBackendView(views.APIView):
             # Validate account type
             if account.type != 'D':
 
-                # Delete token
-                #Token.objects.filter(user=user).delete()
-
                 # Get token
-                token = Token.objects.get_or_create(user=user)
+                token, _ = Token.objects.get_or_create(user=user)
 
                 # Create json response
                 response = {
                     'id': user.id,
                     'name': user.first_name,
                     'type': account.type,
-                    'token': token.key
+                    'token': token
                 }
 
                 # Send response

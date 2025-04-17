@@ -255,7 +255,10 @@ class SignInBackendView(views.APIView):
                 Token.objects.filter(user=user).delete()
 
                 # Create new token
-                token = Token.objects.create(user=user)
+                # token = Token.objects.create(user=user)
+
+                # Get token
+                token = Token.objects.get(user=user)
 
                 # Create json response
                 response = {

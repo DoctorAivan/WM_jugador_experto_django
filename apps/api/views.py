@@ -252,13 +252,10 @@ class SignInBackendView(views.APIView):
             if account.type != 'D':
 
                 # Delete token
-                Token.objects.filter(user=user).delete()
-
-                # Create new token
-                # token = Token.objects.create(user=user)
+                #Token.objects.filter(user=user).delete()
 
                 # Get token
-                token = Token.objects.get(user=user)
+                token = Token.objects.get_or_create(user=user)
 
                 # Create json response
                 response = {

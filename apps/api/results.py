@@ -9,7 +9,7 @@ from django.core.cache import cache
 from django.core.paginator import Paginator, EmptyPage
 
 from apps.api.task import Format
-from apps.api.models import (Account, Match, Vote)
+from apps.api.models import (Account, Match, Match_player, Vote)
 from apps.api.serializers import (MatchsPlayersSerializer,
                                   LeaguesSerializer,
                                   TeamsSerializer)
@@ -78,13 +78,55 @@ def results_match(id):
     return match
 
 # Create match results
-def results_match_votes(id):
+def results_match_votes(id, limit):
 
     # Get match data
     match = Match.objects.get(pk=id)
 
     # Get match votes results
-    results = match_top_three_players(id)
+    results = match_voted_players_list(id, limit)
+
+    # Create json structure
+    match = {
+        'league' : LeaguesSerializer(match.league).data,
+        'match' : {
+            'id' : match.id,
+            'status' : match.status,
+            'date' : Format.new_date(match.date),
+            'time' : Format.new_time(match.time),
+            'date_digits' : match.date,
+            'local' : {
+                'id' : match.team_local.id,
+                'name' : match.team_local.name,
+                'code' : match.team_local.code
+            },
+            'visit' : {
+                'id' : match.team_visit.id,
+                'name' : match.team_visit.name,
+                'code' : match.team_visit.code
+            },
+            'results' : {
+                'total' : results['total'],
+                'list' : results['list']
+            }
+        }
+    }
+
+    # ID for cache
+    cache_key = f"match_results_{id}"
+
+    # Refresh cache indefinitely
+    cache.set(cache_key, match, timeout=10)
+    return match
+
+# Create match results backend
+def results_match_votes_backend(id):
+
+    # Get match data
+    match = Match.objects.get(pk=id)
+
+    # Get match votes results
+    results = match_voted_players_list_backend(id)
 
     # Create json structure
     match = {
@@ -108,15 +150,12 @@ def results_match_votes(id):
             'results' : {
                 'list' : results['list'],
                 'total' : results['total'],
+                'real_votes' : results['real_votes'],
+                'manual_votes' : results['manual_votes']
             }
         }
     }
 
-    # ID for cache
-    cache_key = f"match_results_{id}"
-
-    # Refresh cache indefinitely
-    cache.set(cache_key, match, timeout=10)
     return match
 
 #       #       #       #       #       #       #       #       #       #       #       #
@@ -176,7 +215,116 @@ def results_match_list(matchs=[]):
 #       #       #       #       #       #       #       #       #       #       #       #
 
 # Get match top three voted players
-def match_top_three_players(id):
+def match_voted_players_list(id, limit):
+
+    # Get votes per player (real + manual)
+    match_votes = (
+        Match_player.objects
+        .filter(match_id=id)
+        .values(
+            player_name=F('player__name'),
+            team_name=F('team__name'),
+            team_code=F('team__code')
+        )
+        .annotate(
+            real_votes=Count('votes'),
+            votes=F('real_votes') + F('manual_votes')
+        )
+        .order_by('-votes','player__name')[:limit]
+    )
+
+    # Count real votes
+    real_votes = Vote.objects.filter(match_id=id).count()
+
+    # Count manual votes
+    manual_votes = (
+        Match_player.objects
+        .filter(match_id=id)
+        .aggregate(total_manual=Sum('manual_votes'))
+    )['total_manual']
+
+    # Total votes
+    total_votes = real_votes + manual_votes
+
+    # Create player list
+    players = [
+        {
+            'name': player['player_name'],
+            'team': {
+                'code': player['team_code'],
+                'name': player['team_name'],
+            },
+            'votes': player['votes'],
+            'percentage': Format.persentage(player['votes'], total_votes)
+        }
+        for player in match_votes
+    ]
+
+    return {
+        'total': total_votes,
+        'list': players
+    }
+
+# Get match top three voted players Backend
+def match_voted_players_list_backend(id):
+
+    # Get votes per player (real + manual)
+    match_votes = (
+        Match_player.objects
+        .filter(match_id=id)
+        .values(
+            mp_id=F('id'),
+            mp_votes=F('manual_votes'),
+            player_name=F('player__name'),
+            team_name=F('team__name'),
+            team_code=F('team__code')
+        )
+        .annotate(
+            real_votes=Count('votes'),
+            votes=F('real_votes') + F('manual_votes')
+        )
+        .order_by('-votes','player__name')
+    )
+
+    # Total de votos reales
+    real_votes = Vote.objects.filter(match_id=id).count()
+
+    # Total de votos manuales
+    manual_votes = (
+        Match_player.objects
+        .filter(match_id=id)
+        .aggregate(total_manual=Sum('manual_votes'))
+    )['total_manual']
+
+    # Total global
+    total_votes = real_votes + manual_votes
+    #total_votes = sum(item['votes'] for item in match_votes)
+
+    # Crear lista de jugadores
+    players = [
+        {
+            'id': player['mp_id'],
+            'm_votes': player['mp_votes'],
+            'name': player['player_name'],
+            'team': {
+                'code': player['team_code'],
+                'name': player['team_name'],
+            },
+            'votes': player['votes'],
+            'percentage': Format.persentage(player['votes'], total_votes)
+        }
+        for player in match_votes
+    ]
+
+    return {
+        'total': total_votes,
+        'real_votes': real_votes,
+        'manual_votes': manual_votes,
+        'list': players
+    }
+
+# Get match top three voted players Backup
+def match_voted_players_list_BKP(id):
 
     # Set results list
     limit = 5
@@ -198,7 +346,6 @@ def match_top_three_players(id):
 
     # Count all votes in match
     total_votes = Vote.objects.filter(match_id=id).count()
-    #total_votes = sum(item['votes'] for item in match_votes)
 
     # Create response and percentages
     players = [
@@ -542,6 +689,7 @@ def results_match_archived_list(limit, page=1):
             'team_visit__id',
             'team_visit__name',
             'team_visit__code',
+            'manual_votes',
             'date',
             'time'
         )
@@ -565,6 +713,7 @@ def results_match_archived_list(limit, page=1):
             'id' : match['id'],
             'date' : Format.new_date(match['date']),
             'time' : Format.new_time(match['time']),
+            'manual_votes' : match['manual_votes'],
             'league' : {
                 'id' : match['league__id'],
                 'name' : match['league__name']

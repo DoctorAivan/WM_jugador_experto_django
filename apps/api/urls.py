@@ -24,6 +24,7 @@ from apps.api.views import (CreateOwner,
                             MatchUpdateListView,
                             MatchSettingsView,
                             MatchResultsView,
+                            MatchManualVotesView,
                             MatchSchemeView,
                             MatchPlayersView,
                             MatchPlayersActionsView,
@@ -45,7 +46,8 @@ from apps.api.views import (CreateOwner,
 
                             JsonMatchs,
                             JsonMatchsDetails,
-                            JsonMatchsResults)
+                            JsonMatchsResults,
+                            )
 
 router = SimpleRouter(trailing_slash=False)
 #router.register('users', UserstViewSet, basename='users')
@@ -91,6 +93,7 @@ urlpatterns = [
     path('matchs/<int:pk>/status', MatchStatusView.as_view(), name='match-status'),
     path('matchs/<int:pk>/settings', MatchSettingsView.as_view(), name='match-settings'),
     path('matchs/<int:pk>/results', MatchResultsView.as_view(), name='match-results'),
+    path('matchs/<int:pk>/manual-votes', MatchManualVotesView.as_view(), name='match-manual-votes'),
     path('matchs/<int:pk>/scheme', MatchSchemeView.as_view(), name='match-scheme'),
     path('matchs/<int:pk>/archived', MatchArchivedUpdateView.as_view(), name='match-archived-set'),
     path('matchs/<int:pk>/players', MatchPlayersView.as_view(), name='match-players'),

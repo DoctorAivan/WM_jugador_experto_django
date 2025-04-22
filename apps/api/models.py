@@ -15,7 +15,8 @@ class Account(models.Model):
         ('A', 'Admin'),
         ('B', 'Staff'),
         ('C', 'Branded'),
-        ('D', 'Users')
+        ('D', 'Users'),
+        ('E', 'Switch')
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='account')
@@ -87,6 +88,7 @@ class Match(models.Model):
     team_visit = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="team_visit")
     date = models.DateField()
     time = models.TimeField()
+    manual_votes = models.BooleanField(default=False, null=False, blank=False)
 
     class Meta:
         ordering = ['order']
@@ -103,6 +105,7 @@ class Match_player(models.Model):
     order = models.IntegerField(default=0)
     captain = models.BooleanField(default=False)
     number = models.IntegerField(default=0)
+    manual_votes = models.IntegerField(default=0, null=False, blank=False )
 
     class Meta:
         ordering = ['order']

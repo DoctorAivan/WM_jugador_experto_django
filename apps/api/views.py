@@ -1,4 +1,5 @@
 from django.db import connection
+from django.db.models import Sum
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
@@ -44,6 +45,7 @@ from apps.api.serializers import (SignUpSerializer,
 from apps.api.results import (results_match_list,
                               results_match,
                               results_match_votes,
+                              results_match_votes_backend,
                               results_match_archive,
                               result_all_match_list,
                               user_vote_history,
@@ -473,7 +475,7 @@ class JsonMatchsResults(APIView):
                 return Response( response , status = status.HTTP_200_OK)
 
             # Set cache data
-            response = results_match_votes(pk)
+            response = results_match_votes(pk, 5)
             return Response( response , status = status.HTTP_200_OK)
 
         except:
@@ -931,6 +933,7 @@ class MatchListView(views.APIView):
                 'order' : match.order,
                 'scheme' : match.scheme,
                 'status' : match.status,
+                'manual_votes' : match.manual_votes,
                 'date' : Format.new_date(match.date),
                 'time' : Format.new_time(match.time),
                 'league' : LeaguesSerializer(match.league).data,
@@ -1135,7 +1138,6 @@ class MatchArchivedtView(views.APIView):
 
         # Create match list
         matchs_list = results_match_archived_list(10, page)
-
         return Response(matchs_list , status=status.HTTP_200_OK)
 
 # Match Settings
@@ -1208,10 +1210,82 @@ class MatchResultsView(views.APIView):
     permission_classes = [Switch]
 
     def get(self, request, pk):
+        try:
 
-        # Create match json file
-        response = results_match_votes(pk)
-        return Response( response , status = status.HTTP_200_OK)
+            # Create match voted player list
+            response = results_match_votes_backend(pk)
+            return Response( response , status = status.HTTP_200_OK)
+        
+        except:
+            return Response('error' , status=status.HTTP_400_BAD_REQUEST)
+
+# Match Manual Votes
+class MatchManualVotesView(views.APIView):
+    permission_classes = [Switch]
+
+    def post(self, request, pk):
+        try:
+
+            # Get Match player item ID
+            id = request.data['id']
+
+            # Get manual votes for save
+            manual_votes = request.data['manual_votes']
+
+            # Update votes in player
+            votes = Match_player.objects.get(pk=id)
+            votes.manual_votes = manual_votes
+            votes.save()
+
+            # Validate votes
+            if manual_votes > 0:
+
+                # Update manual votes in match
+                match = Match.objects.get(pk=pk)
+                match.manual_votes = True
+                match.save()
+
+                # Create response
+                response = {
+                    'match' : pk,
+                    'status' : True
+                }
+
+            else:
+
+                # Count total manual votes
+                manual_votes = (
+                    Match_player.objects
+                    .filter(match_id=pk)
+                    .aggregate(total_manual=Sum('manual_votes'))
+                )['total_manual']
+
+                # Validate total votes
+                if manual_votes == 0:
+
+                    # Update manual votes in match
+                    match = Match.objects.get(pk=pk)
+                    match.manual_votes = False
+                    match.save()
+
+                    # Create response
+                    response = {
+                        'match' : pk,
+                        'status' : False
+                    }
+
+                else:
+
+                    # Create response
+                    response = {
+                        'match' : pk,
+                        'status' : True
+                    }
+
+            return Response(response , status=status.HTTP_200_OK)
+
+        except:
+            return Response('error' , status=status.HTTP_400_BAD_REQUEST)
 
 # Match Save Scheme
 class MatchSchemeView(views.APIView):

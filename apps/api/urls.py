@@ -47,7 +47,9 @@ from apps.api.views import (CreateOwner,
                             JsonMatchs,
                             JsonMatchsDetails,
                             JsonMatchsResults,
-                            )
+                            
+                            ScrapingView,
+                            PlayerTvNane)
 
 router = SimpleRouter(trailing_slash=False)
 #router.register('users', UserstViewSet, basename='users')
@@ -133,5 +135,11 @@ urlpatterns = [
     path('match-list', JsonMatchs.as_view(), name='json-matchs'),
     path('match-election/<int:pk>', JsonMatchsDetails.as_view(), name='api-match-election'),
     path('match-results/<int:pk>', JsonMatchsResults.as_view(), name='api-match-results'),
+
+    #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+
+    # Scraping
+    path('scraping/<int:espn>', ScrapingView.as_view(), name='scraping'),
+    path('player-tv-name', PlayerTvNane.as_view(), name='player-tv-name'),
 
 ]

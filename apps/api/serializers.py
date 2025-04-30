@@ -78,7 +78,7 @@ class TeamsSerializer(serializers.ModelSerializer):
 class PlayersSerializer(serializers.ModelSerializer):
     class Meta:
         model = Player
-        fields = ('id', 'type', 'name', 'number')
+        fields = ('id', 'type', 'fullname', 'number')
         read_only_fields = ('id',)
 
 #       #       #       #       #       #       #       #       #       #       #       #
@@ -94,28 +94,32 @@ class MatchsSerializer(serializers.ModelSerializer):
 class MatchsPlayersSerializer(serializers.ModelSerializer):
 
     name = serializers.CharField(source='player.name', read_only=True)
+    fullname = serializers.CharField(source='player.fullname', read_only=True)
     type = serializers.CharField(source='player.type', read_only=True)
 
     class Meta:
         model = Match_player
-        fields = ('id','order', 'type','player','name', 'captain', 'number')
+        fields = ('id','order', 'type','player','name', 'fullname', 'captain', 'number')
 
 # Matchs Players Serializer
 class MatchsPlayersUpdateSerializer(serializers.ModelSerializer):
 
     name = serializers.CharField(write_only=True, required=False)
+    fullname = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Match_player
-        fields = ('name', 'number', 'captain')
+        fields = ('name', 'fullname', 'number', 'captain')
 
     def update(self, instance, validated_data):
         instance.number = validated_data.get('number', instance.number)
         instance.captain = validated_data.get('captain', instance.captain)
 
         name = validated_data.get('name')
+        fullname = validated_data.get('fullname')
         if name:
             instance.player.name = name
+            instance.player.fullname = fullname
             instance.player.save()
 
         instance.save()

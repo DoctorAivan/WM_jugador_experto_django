@@ -742,13 +742,12 @@ def results_match_archived_list(limit, page=1):
 #       #       #       #       #       #       #       #       #       #       #       #
 
 # Get votes per day
-def results_votes_per_day(month, previous_month, year, previous_year):
+def results_votes_per_day(month, year):
 
     # Filtrar los votos por el mes y año especificado
     votes_by_day = (
         Vote.objects.filter(
-            Q(match__date__year=year, match__date__month=month) |
-            Q(match__date__year=previous_year, match__date__month=previous_month)
+            Q(match__date__year=year, match__date__month=month)
         )
         .annotate(day=TruncDate('match__date'))
         .values('day')
@@ -771,7 +770,7 @@ def results_votes_per_day(month, previous_month, year, previous_year):
     }
 
 # Get most voted matchs
-def results_most_voted_matchs(limit, month, previous_month, year, previous_year):
+def results_most_voted_matchs(limit, month, year):
     
     # Filter votes within the specific month and year
     match_votes = (
@@ -779,6 +778,7 @@ def results_most_voted_matchs(limit, month, previous_month, year, previous_year)
             Q(match__date__year=year, match__date__month=month)
         )
         .values(
+            m_id=F('match__id'),
             match_name=F('match__league__name'),
             league_code=F('match__league__description'),
             team_local_name=F('match__team_local__name'),
@@ -786,7 +786,8 @@ def results_most_voted_matchs(limit, month, previous_month, year, previous_year)
             team_visit_name=F('match__team_visit__name'),
             team_visit_code=F('match__team_visit__code'),
             match_date=F('match__date'),
-            match_time=F('match__time')
+            match_time=F('match__time'),
+            match_manual_votes=F('match__manual_votes'),
         )
         .annotate(total_votes=Count('id'))
         .order_by('-total_votes')
@@ -798,6 +799,7 @@ def results_most_voted_matchs(limit, month, previous_month, year, previous_year)
     # Build response with percentages
     top_matches = [
         {
+            'id' : match['m_id'],
             'league': {
                 'name': match['match_name'],
                 'code': match['league_code']
@@ -813,6 +815,7 @@ def results_most_voted_matchs(limit, month, previous_month, year, previous_year)
             'date' : Format.new_date(match['match_date']),
             'time' : Format.new_time(match['match_time']),
             'votes': Format.number(match['total_votes']),
+            'manual_votes': match['match_manual_votes'],
             'percentage': f"{(match['total_votes'] / total_votes_month) * 100:.1f}%"
         }
         for match in match_votes[:limit]
@@ -824,7 +827,7 @@ def results_most_voted_matchs(limit, month, previous_month, year, previous_year)
     }
 
 # Get most voted teams
-def results_most_voted_teams(limit, month, previous_month, year, previous_year):
+def results_most_voted_teams(limit, month, year):
     
     # Count the total votes in the specified month and year
     total_votes = Vote.objects.filter(match__date__month=month, match__date__year=year).count()
@@ -867,7 +870,7 @@ def results_most_voted_teams(limit, month, previous_month, year, previous_year):
     }
 
 # Get most voted players
-def results_most_voted_players(limit, month, previous_month, year, previous_year):
+def results_most_voted_players(limit, month, year):
 
     # Count the total votes in the specified month and year
     total_votes = Vote.objects.filter(match__date__month=month, match__date__year=year).count()

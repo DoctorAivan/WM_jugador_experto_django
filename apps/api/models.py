@@ -40,6 +40,7 @@ class Player(models.Model):
     status = models.BooleanField(default=True)
     type = models.CharField(max_length=1, choices=player_types, default='M')
     name = models.CharField(max_length=64)
+    fullname = models.CharField(max_length=64, default='', null=False, blank=False)
     number = models.IntegerField(default=10)
 
     class Meta:

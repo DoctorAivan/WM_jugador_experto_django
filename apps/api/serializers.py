@@ -78,7 +78,7 @@ class TeamsSerializer(serializers.ModelSerializer):
 class PlayersSerializer(serializers.ModelSerializer):
     class Meta:
         model = Player
-        fields = ('id', 'type', 'fullname', 'number')
+        fields = ('id', 'type', 'name', 'fullname', 'number')
         read_only_fields = ('id',)
 
 #       #       #       #       #       #       #       #       #       #       #       #
@@ -100,6 +100,16 @@ class MatchsPlayersSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match_player
         fields = ('id','order', 'type','player','name', 'fullname', 'captain', 'number')
+
+# Matchs Players Serializer
+class MatchsPlayersVotesSerializer(serializers.ModelSerializer):
+
+    fullname = serializers.CharField(source='player.fullname', read_only=True)
+    type = serializers.CharField(source='player.type', read_only=True)
+
+    class Meta:
+        model = Match_player
+        fields = ('id','order', 'type','player','fullname', 'captain', 'number')
 
 # Matchs Players Serializer
 class MatchsPlayersUpdateSerializer(serializers.ModelSerializer):

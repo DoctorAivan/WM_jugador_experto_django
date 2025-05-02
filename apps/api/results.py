@@ -3,6 +3,7 @@ from django.conf import settings
 from django.http import HttpResponse
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncDate
 from django.core.cache import cache
@@ -10,7 +11,7 @@ from django.core.paginator import Paginator, EmptyPage
 
 from apps.api.task import Format
 from apps.api.models import (Account, Match, Match_player, Vote)
-from apps.api.serializers import (MatchsPlayersSerializer,
+from apps.api.serializers import (MatchsPlayersVotesSerializer,
                                   LeaguesSerializer,
                                   TeamsSerializer)
 
@@ -31,7 +32,7 @@ def results_match(id):
     for player in match.match_player_set.all():
 
         # Create player
-        player_data = MatchsPlayersSerializer(player).data
+        player_data = MatchsPlayersVotesSerializer(player).data
 
         # Assign team
         if player.team.id == match.team_local.id:
@@ -222,7 +223,7 @@ def match_voted_players_list(id, limit):
         Match_player.objects
         .filter(match_id=id)
         .values(
-            player_name=F('player__name'),
+            player_name=F('player__fullname'),
             team_name=F('team__name'),
             team_code=F('team__code')
         )
@@ -230,7 +231,7 @@ def match_voted_players_list(id, limit):
             real_votes=Count('votes'),
             votes=F('real_votes') + F('manual_votes')
         )
-        .order_by('-votes','player__name')[:limit]
+        .order_by('-votes','player__fullname')[:limit]
     )
 
     # Count real votes
@@ -276,6 +277,7 @@ def match_voted_players_list_backend(id):
             mp_id=F('id'),
             mp_votes=F('manual_votes'),
             player_name=F('player__name'),
+            player_fullname=F('player__fullname'),
             team_name=F('team__name'),
             team_code=F('team__code')
         )
@@ -306,6 +308,7 @@ def match_voted_players_list_backend(id):
             'id': player['mp_id'],
             'm_votes': player['mp_votes'],
             'name': player['player_name'],
+            'fullname': player['player_fullname'],
             'team': {
                 'code': player['team_code'],
                 'name': player['team_name'],
@@ -599,6 +602,14 @@ def result_users_list(page=1):
         matchs_total = Match.objects.all().count()
         votes_total = Vote.objects.all().count()
 
+        accounts_per_day = (
+            User.objects
+            .annotate(day=TruncDate('date_joined'))
+            .values('day')
+            .annotate(count=Count('id'))
+            .order_by('day')
+        )
+
     # Set results list
     list_results = 10
 
@@ -643,6 +654,15 @@ def result_users_list(page=1):
 
     # Response
     if page == 1:
+
+        accounts_per_day_titles = []
+        accounts_per_day_series = []
+
+        for account in accounts_per_day:
+
+            accounts_per_day_titles.append( Format.new_date(account['day']) )
+            accounts_per_day_series.append( account['count'] )
+
         return {
             'totals' : {
                 'accounts' : Format.number(accounts_total),
@@ -654,6 +674,10 @@ def result_users_list(page=1):
                 'votes' : Format.number(votes_total)
             },
             'accounts': accounts_list,
+            'days': {
+                'titles' : accounts_per_day_titles,
+                'series' : accounts_per_day_series
+            },
             'page': page,
             'pages': paginator.num_pages
         }

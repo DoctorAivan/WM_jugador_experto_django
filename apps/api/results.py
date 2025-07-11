@@ -223,6 +223,7 @@ def match_voted_players_list(id, limit):
         Match_player.objects
         .filter(match_id=id)
         .values(
+            id_player=F('player__id'),
             player_name=F('player__name'),
             player_fullname=F('player__fullname'),
             team_name=F('team__name'),
@@ -251,6 +252,7 @@ def match_voted_players_list(id, limit):
     # Create player list
     players = [
         {
+            'id': player['id_player'],
             'name': player['player_name'],
             'fullname': player['player_fullname'],
             'team': {
